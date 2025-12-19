@@ -1,0 +1,285 @@
+name: Publish Helm Charts
+
+on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+  release:
+    types: [ published ]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'latest'
+
+      - name: Configure Git
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+
+      - name: Import GPG key
+        id: gpg-setup
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          if [ -n "$GPG_PRIVATE_KEY" ]; then
+            # Create GPG directory if it doesn't exist
+            mkdir -p ~/.gnupg
+            chmod 700 ~/.gnupg
+            
+            # Configure GPG for batch mode
+            echo "batch" >> ~/.gnupg/gpg.conf
+            echo "no-tty" >> ~/.gnupg/gpg.conf
+            echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+            echo "no-auto-key-locate" >> ~/.gnupg/gpg.conf
+            echo "no-auto-check-trustdb" >> ~/.gnupg/gpg.conf
+            
+            # Set environment to prevent interactive prompts
+            export GPG_TTY=""
+            export GNUPGHOME=~/.gnupg
+            
+            # Import the private key
+            echo "$GPG_PRIVATE_KEY" | gpg --batch --yes --import
+            
+            # List keys for verification
+            gpg --list-secret-keys --keyid-format LONG
+            
+            # Get the key ID from the imported key (extract from sec line)
+            # Format: sec   ed25519/9B50CF408ED73162 2025-12-19 [SC]
+            GPG_KEY_ID=$(gpg --list-secret-keys --keyid-format LONG | grep -E "^sec" | head -1 | awk '{print $2}' | cut -d'/' -f2)
+            
+            if [ -z "$GPG_KEY_ID" ]; then
+              # Try with SHORT format
+              GPG_KEY_ID=$(gpg --list-secret-keys --keyid-format SHORT | grep -E "^sec" | head -1 | awk '{print $2}' | cut -d'/' -f2)
+            fi
+            
+            # Get the full fingerprint for ownertrust (required format)
+            # Format:       F81881FAF41751368A6AB6BF9B50CF408ED73162
+            GPG_FINGERPRINT=$(gpg --list-secret-keys --keyid-format LONG | grep -A1 "^sec" | grep -E "^      " | head -1 | awk '{print $1}')
+            
+            # Get the key name/email for Helm (Helm might prefer this over key ID)
+            GPG_KEY_NAME=$(gpg --list-secret-keys --keyid-format LONG "$GPG_KEY_ID" | grep -E "^uid" | head -1 | sed -E 's/^uid\s+\[.*\]\s+(.*)$/\1/' | awk -F'<' '{print $1}' | xargs)
+            GPG_KEY_EMAIL=$(gpg --list-secret-keys --keyid-format LONG "$GPG_KEY_ID" | grep -E "^uid" | head -1 | sed -E 's/.*<([^>]+)>.*/\1/')
+            
+            if [ -z "$GPG_KEY_ID" ]; then
+              echo "ERROR: Could not extract GPG key ID"
+              gpg --list-secret-keys
+              exit 1
+            fi
+            
+            if [ -z "$GPG_FINGERPRINT" ]; then
+              echo "ERROR: Could not extract GPG fingerprint"
+              gpg --list-secret-keys
+              exit 1
+            fi
+            
+            # Trust the key (required for Helm signing)
+            # Format: FINGERPRINT:trust-level: (6 = ultimate trust)
+            echo "$GPG_FINGERPRINT:6:" | gpg --batch --import-ownertrust
+            
+            # Check trustdb to apply trust settings
+            gpg --batch --check-trustdb
+            
+            # Verify the key is accessible
+            echo "=== Verifying key access ==="
+            gpg --list-secret-keys "$GPG_KEY_ID"
+            
+            # Create secring.gpg for Helm (Helm requires legacy format)
+            # Export to a temporary location first, then copy to avoid migration triggers
+            echo "=== Creating secring.gpg for Helm ==="
+            TEMP_SECRING=$(mktemp)
+            
+            # Export secret keys to temporary file
+            if [ -n "$GPG_PASSPHRASE" ]; then
+              echo "$GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --export-secret-keys "$GPG_KEY_ID" > "$TEMP_SECRING" 2>&1
+            else
+              gpg --batch --yes --export-secret-keys "$GPG_KEY_ID" > "$TEMP_SECRING" 2>&1
+            fi
+            
+            # Check if export was successful
+            if [ -s "$TEMP_SECRING" ]; then
+              # Copy to final location
+              cp "$TEMP_SECRING" ~/.gnupg/secring.gpg
+              chmod 600 ~/.gnupg/secring.gpg
+              echo "secring.gpg created successfully ($(wc -c < ~/.gnupg/secring.gpg) bytes)"
+              
+              # Verify the key is in the file
+              echo "=== Verifying secring.gpg ==="
+              if gpg --no-default-keyring --secret-keyring ~/.gnupg/secring.gpg --list-secret-keys "$GPG_KEY_ID" >/dev/null 2>&1; then
+                echo "Verified: Key found in secring.gpg"
+              else
+                echo "Warning: Key verification failed, but file exists"
+                # Try to list all keys to see what's in there
+                echo "Keys in secring.gpg:"
+                gpg --no-default-keyring --secret-keyring ~/.gnupg/secring.gpg --list-secret-keys 2>&1 || true
+              fi
+            else
+              echo "ERROR: secring.gpg export failed or is empty"
+              echo "Export output:"
+              cat "$TEMP_SECRING" || true
+              rm -f "$TEMP_SECRING"
+              exit 1
+            fi
+            rm -f "$TEMP_SECRING"
+            
+            # Preset passphrase in gpg-agent so Helm can sign without prompts
+            if [ -n "$GPG_PASSPHRASE" ]; then
+              echo "=== Presetting passphrase in gpg-agent ==="
+              # Get the keygrip (required for gpg-preset-passphrase)
+              KEYGRIP=$(gpg --list-secret-keys --with-keygrip "$GPG_KEY_ID" | grep -A1 "^sec" | grep "Keygrip" | awk '{print $3}' | head -1)
+              if [ -n "$KEYGRIP" ]; then
+                # Try to preset the passphrase in gpg-agent (if gpg-preset-passphrase is available)
+                which gpg-preset-passphrase >/dev/null 2>&1 && echo "$GPG_PASSPHRASE" | gpg-preset-passphrase --preset "$KEYGRIP" 2>&1 || {
+                  echo "Note: gpg-preset-passphrase not available, will cache via test signing"
+                }
+              fi
+              
+              # Test signing to cache the passphrase in gpg-agent
+              echo "$GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --sign --default-key "$GPG_KEY_ID" --output /dev/null < /dev/null >/dev/null 2>&1 && echo "Passphrase cached in gpg-agent" || echo "Note: Signing test completed"
+            else
+              echo "=== Testing secret key access (no passphrase) ==="
+              echo "test" | gpg --batch --yes --sign --default-key "$GPG_KEY_ID" --output /dev/null 2>&1 || echo "Note: Signing test completed"
+            fi
+            
+            echo "GPG key imported and trusted. Key ID: $GPG_KEY_ID"
+            echo "key_id=$GPG_KEY_ID" >> $GITHUB_OUTPUT
+            echo "key_name=$GPG_KEY_NAME" >> $GITHUB_OUTPUT
+            echo "key_email=$GPG_KEY_EMAIL" >> $GITHUB_OUTPUT
+            echo "key_fingerprint=$GPG_FINGERPRINT" >> $GITHUB_OUTPUT
+          else
+            echo "GPG_PRIVATE_KEY not set, skipping signing"
+            echo "key_id=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create packages directory
+        run: mkdir -p packages
+
+      - name: Package all charts
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          charts=$(find . -name 'Chart.yaml' -not -path './.git/*' -not -path './.github/*' | xargs dirname)
+          GPG_KEY_ID="${{ steps.gpg-setup.outputs.key_id }}"
+          GPG_KEY_NAME="${{ steps.gpg-setup.outputs.key_name }}"
+
+          for chart in $charts; do
+            echo "Packaging chart: $chart"
+
+            # Build dependencies
+            helm dependency build "$chart" || true
+
+            # Package the chart (with signing if GPG key is available)
+
+            if [ -n "$GPG_KEY_ID" ]; then
+              echo "Signing chart with key: $GPG_KEY_NAME"
+
+              # Verify secring.gpg exists
+              if [ ! -f ~/.gnupg/secring.gpg ]; then
+                echo "ERROR: secring.gpg not found!"
+                exit 1
+              fi
+
+              # Create passphrase file if passphrase is provided
+              HELM_SIGN_ARGS="--sign --key \"$GPG_KEY_NAME\" --keyring ~/.gnupg/secring.gpg"
+              if [ -n "$GPG_PASSPHRASE" ]; then
+                # Use --passphrase-file to provide passphrase
+                PASSPHRASE_FILE=$(mktemp)
+                echo "$GPG_PASSPHRASE" > "$PASSPHRASE_FILE"
+                HELM_SIGN_ARGS="$HELM_SIGN_ARGS --passphrase-file \"$PASSPHRASE_FILE\""
+              fi
+
+              # Package and sign according to Helm documentation:
+              # helm package --sign ./mychart --key mykey --keyring ~/.gnupg/secring.gpg
+              eval helm package "$chart" -d packages/ $HELM_SIGN_ARGS
+
+              # Clean up passphrase file
+              [ -n "$PASSPHRASE_FILE" ] && rm -f "$PASSPHRASE_FILE"
+            else
+              helm package "$chart" -d packages/
+            fi
+          done
+
+      - name: Create Helm repository index
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          GPG_KEY_ID="${{ steps.gpg-setup.outputs.key_id }}"
+          GPG_KEY_NAME="${{ steps.gpg-setup.outputs.key_name }}"
+
+          # Create the index first (helm repo index doesn't support --sign flag)
+          helm repo index packages/ --url https://sky-sail.github.io/helm-charts/
+
+          # Sign the index.yaml file if GPG key is available
+          if [ -n "$GPG_KEY_ID" ] && [ -f packages/index.yaml ]; then
+            echo "Signing index.yaml with key: $GPG_KEY_NAME"
+
+            # Sign the index.yaml file using GPG directly
+            if [ -n "$GPG_PASSPHRASE" ]; then
+              echo "$GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --default-key "$GPG_KEY_ID" --armor --detach-sign packages/index.yaml
+            else
+              gpg --batch --yes --default-key "$GPG_KEY_ID" --armor --detach-sign packages/index.yaml
+            fi
+
+            # Verify the signature was created
+            if [ -f packages/index.yaml.asc ]; then
+              echo "Index signed successfully: packages/index.yaml.asc"
+            else
+              echo "Warning: Failed to create index signature"
+            fi
+          fi
+
+      - name: Export and publish public key
+        run: |
+          GPG_KEY_ID="${{ steps.gpg-setup.outputs.key_id }}"
+          if [ -n "$GPG_KEY_ID" ]; then
+            # Export public key
+            gpg --armor --export "$GPG_KEY_ID" > packages/pubring.gpg
+            echo "Public key exported. Key ID: $GPG_KEY_ID"
+          else
+            echo "GPG key not available, skipping public key export"
+          fi
+
+      - name: Create artifacthub-repo.yml
+        run: |
+          cat > packages/artifacthub-repo.yml <<EOF
+          # Repository ID from Artifact Hub Control Panel
+          # Get this after adding the repository to Artifact Hub
+          repositoryID: 9526bc31-ea1f-434f-bd6e-d1f911b1f34f
+
+          owners:
+            - name: Sky-Sail
+              email: kacper@karczmarzyk.me
+          EOF
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/')
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./packages
+          keep_files: false
+          force_orphan: true
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: packages/*.tgz
+          generate_release_notes: true
+
