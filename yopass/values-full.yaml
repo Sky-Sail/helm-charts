@@ -163,4 +163,3 @@ valkey:
   enabled: false
   auth:
     enabled: false
-

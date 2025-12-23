@@ -65,10 +65,10 @@ gateway:
   #     namespace: default
   hosts:
     - hostname: chart-example.local
-      # Optional: TLS configuration
-      # tls:
-      #   certificateRefs:
-      #     - name: chart-example-tls
+    # Optional: TLS configuration
+    # tls:
+    #   certificateRefs:
+    #     - name: chart-example-tls
   # Route rules
   rules:
     - matches:
@@ -97,17 +97,17 @@ httpproxy:
   routes:
     - conditions:
         - prefix: /
-      # Optional: timeout policy
-      # timeoutPolicy:
-      #   response: 60s
-      #   idle: 3600s
-      # Optional: retry policy
-      # retryPolicy:
-      #   count: 3
-      #   perTryTimeout: 10s
-      # Optional: load balancer policy
-      # loadBalancerPolicy:
-      #   strategy: RoundRobin
+        # Optional: timeout policy
+        # timeoutPolicy:
+        #   response: 60s
+        #   idle: 3600s
+        # Optional: retry policy
+        # retryPolicy:
+        #   count: 3
+        #   perTryTimeout: 10s
+        # Optional: load balancer policy
+        # loadBalancerPolicy:
+        #   strategy: RoundRobin
 
 resources:
   # We usually recommend not to specify default resources and to leave this as a conscious

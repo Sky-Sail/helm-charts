@@ -68,4 +68,3 @@ memcached:
 
 valkey:
   enabled: false
-
