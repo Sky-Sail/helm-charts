@@ -1,0 +1,146 @@
+name: Kubesec Security Scan
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  schedule:
+    # Run weekly on Wednesday at 00:00 UTC
+    - cron: '0 0 * * 3'
+
+jobs:
+  kubesec-scan:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        chart: [yopass]
+        values:
+          - values-minimal.yaml
+          - values-full.yaml
+      fail-fast: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'latest'
+
+      - name: Install Kubesec
+        run: |
+          curl -sSL https://github.com/controlplaneio/kubesec/releases/download/v2.13.0/kubesec_linux_amd64.tar.gz | tar -xz
+          sudo mv kubesec /usr/local/bin/
+          kubesec version
+
+      - name: Build chart dependencies
+        run: |
+          if [ -f "${{ matrix.chart }}/Chart.yaml" ]; then
+            helm dependency build "${{ matrix.chart }}" || true
+          fi
+
+      - name: Render Helm templates
+        id: render
+        run: |
+          mkdir -p rendered
+          values_file="${{ matrix.chart }}/${{ matrix.values }}"
+
+          if [ -f "$values_file" ]; then
+            echo "✅ Rendering with $values_file"
+            helm template test-release "${{ matrix.chart }}" -f "$values_file" > "rendered/${{ matrix.chart }}-${{ matrix.values }}.yaml" || {
+              echo "❌ Failed to render with $values_file, trying default values"
+              helm template test-release "${{ matrix.chart }}" > "rendered/${{ matrix.chart }}-default.yaml"
+            }
+          else
+            echo "⚠️ Values file $values_file not found, using default values"
+            helm template test-release "${{ matrix.chart }}" > "rendered/${{ matrix.chart }}-default.yaml"
+          fi
+
+      - name: Run Kubesec scan
+        id: kubesec
+        continue-on-error: true
+        run: |
+          rendered_file="rendered/${{ matrix.chart }}-${{ matrix.values }}.yaml"
+          if [ ! -f "$rendered_file" ]; then
+            rendered_file="rendered/${{ matrix.chart }}-default.yaml"
+          fi
+
+          echo "🔍 Scanning $rendered_file with Kubesec..."
+          kubesec scan "$rendered_file" > kubesec-result.json || true
+
+          # Extract score
+          score=$(jq -r '.[0].score // 0' kubesec-result.json 2>/dev/null || echo "0")
+          echo "score=$score" >> $GITHUB_OUTPUT
+
+          # Display results
+          echo "📊 Kubesec Results:"
+          cat kubesec-result.json | jq '.' || cat kubesec-result.json
+
+          # Check for critical issues
+          critical=$(jq -r '[.[0].scoring.advise[]? | select(.selector == "critical")] | length' kubesec-result.json 2>/dev/null || echo "0")
+          echo "critical=$critical" >> $GITHUB_OUTPUT
+
+      - name: Upload Kubesec results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubesec-${{ matrix.chart }}-${{ matrix.values }}
+          path: |
+            kubesec-result.json
+            rendered/${{ matrix.chart }}-*.yaml
+
+      - name: Fail if critical issues found
+        if: steps.kubesec.outputs.critical > 0
+        run: |
+          echo "❌ Critical security issues found!"
+          exit 1
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let comment = '## 🔒 Kubesec Security Scan Results\n\n';
+            comment += `**Chart:** ${{ matrix.chart }}\n`;
+            comment += `**Values:** ${{ matrix.values }}\n`;
+            comment += `**Score:** ${{ steps.kubesec.outputs.score }}\n\n`;
+
+            try {
+              const result = JSON.parse(fs.readFileSync('kubesec-result.json', 'utf8'));
+              if (result[0] && result[0].scoring) {
+                const advise = result[0].scoring.advise || [];
+                const critical = advise.filter(a => a.selector === 'critical');
+                const important = advise.filter(a => a.selector === 'important');
+
+                if (critical.length > 0) {
+                  comment += '### ⚠️ Critical Issues\n';
+                  critical.forEach(issue => {
+                    comment += `- ${issue.reason}\n`;
+                  });
+                  comment += '\n';
+                }
+
+                if (important.length > 0) {
+                  comment += '### ⚠️ Important Issues\n';
+                  important.forEach(issue => {
+                    comment += `- ${issue.reason}\n`;
+                  });
+                  comment += '\n';
+                }
+
+                if (critical.length === 0 && important.length === 0) {
+                  comment += '✅ No critical or important issues found!\n';
+                }
+              }
+            } catch (e) {
+              comment += '⚠️ Could not parse Kubesec results\n';
+            }
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
