@@ -1,6 +1,6 @@
 # yopass
 
-[![Kubesec Security Scan](https://github.com/Sky-Sail/helm-charts/actions/workflows/kubesec-scan.yml/badge.svg?branch=main&label=Kubesec)](https://github.com/Sky-Sail/helm-charts/actions/workflows/kubesec-scan.yml)
+[![Kubesec Security Scan](https://github.com/Sky-Sail/helm-charts/actions/workflows/kubesec-scan.yml/badge.svg)](https://github.com/Sky-Sail/helm-charts/actions/workflows/kubesec-scan.yml)
 
 > 🎯 **Secure by default** | 🛡️ **Production ready** | ⚡ **Kubernetes best practices**
 
