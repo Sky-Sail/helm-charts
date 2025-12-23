@@ -1,26 +1,35 @@
 # yopass
 
-[![Trivy Security Scan - yopass](https://github.com/Sky-Sail/helm-charts/actions/workflows/trivy-scan.yml/badge.svg?branch=main&label=yopass)](https://github.com/Sky-Sail/helm-charts/actions/workflows/trivy-scan.yml)
+[![Kubesec Security Scan](https://github.com/Sky-Sail/helm-charts/actions/workflows/kubesec-scan.yml/badge.svg?branch=main&label=Kubesec)](https://github.com/Sky-Sail/helm-charts/actions/workflows/kubesec-scan.yml)
+
+> 🎯 **Secure by default** | 🛡️ **Production ready** | ⚡ **Kubernetes best practices**
 
 A Helm chart for deploying Yopass, a secure sharing service.
 
-## Chart Details
-
-**Chart Version:** 1.1.0
-**App Version:** 12.4.0
-
-## Description
+## Description 📝
 
 Yopass is a secure sharing service that allows you to share secrets and sensitive information securely.
 
 **Original Project:** [https://github.com/jhaals/yopass](https://github.com/jhaals/yopass)
 
+## Security Status 🔒
+
+This chart follows security best practices and is scanned regularly:
+
+- ✅ **Kubesec Scan**: Automated security scanning on every push and PR
+- ✅ **Non-root user**: Containers run as non-root by default
+- ✅ **Read-only filesystem**: Immutable root filesystem
+- ✅ **Pod Security Context**: Full security context configuration
+- ✅ **Resource limits**: CPU and memory limits defined
+
+Check the [Kubesec scan results](https://github.com/Sky-Sail/helm-charts/actions/workflows/kubesec-scan.yml) for detailed security analysis!
+
 ## Installation
 
 ### Prerequisites
 
-- Kubernetes 1.19+
-- Helm 3.0+
+- ☸️ Kubernetes 1.19+
+- 🎩 Helm 3.0+
 
 ### Install the chart
 
@@ -32,6 +41,23 @@ helm install my-yopass ./
 
 ```bash
 helm install my-yopass ./ -f my-values.yaml
+```
+
+### Test values files
+
+This chart includes test values files for different scenarios:
+
+- **`values-minimal.yaml`**: Minimal configuration with no ingress, gateway, or HTTPProxy enabled. Tests standard deployment with security best practices.
+- **`values-full.yaml`**: Full configuration with all resources enabled (ingress, gateway, HTTPProxy). Tests all features and optional configurations.
+
+You can use these for testing:
+
+```bash
+# Test minimal configuration
+helm template test-release ./ -f values-minimal.yaml
+
+# Test full configuration
+helm template test-release ./ -f values-full.yaml
 ```
 
 ## Configuration
@@ -84,6 +110,63 @@ ingress:
           pathType: Prefix
 ```
 
+## Gateway API (HTTPRoute)
+
+This chart supports the Kubernetes Gateway API standard using HTTPRoute. To enable Gateway support:
+
+```yaml
+gateway:
+  enabled: true
+  gatewayName: my-gateway
+  gatewayNamespace: default  # Optional, defaults to release namespace
+  hosts:
+    - hostname: yopass.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+```
+
+Alternatively, you can use `parentRefs` for more advanced configurations:
+
+```yaml
+gateway:
+  enabled: true
+  parentRefs:
+    - name: my-gateway
+      namespace: default
+  hosts:
+    - hostname: yopass.example.com
+```
+
+For more information, see the [Gateway API documentation](https://gateway-api.sigs.k8s.io/).
+
+## Contour HTTPProxy
+
+This chart supports Project Contour's HTTPProxy resource. To enable HTTPProxy support:
+
+```yaml
+httpproxy:
+  enabled: true
+  virtualhost:
+    fqdn: yopass.example.com
+    tls:
+      secretName: yopass-tls
+      minimumProtocolVersion: "1.2"
+  routes:
+    - conditions:
+        - prefix: /
+      timeoutPolicy:
+        response: 60s
+        idle: 3600s
+      retryPolicy:
+        count: 3
+        perTryTimeout: 10s
+```
+
+For more information, see the [Contour HTTPProxy documentation](https://projectcontour.io/docs/v1.28.0/config/httpproxy/).
+
 ## Upgrading
 
 ```bash
@@ -99,3 +182,9 @@ helm uninstall my-yopass
 ## License
 
 See the application's license for details.
+
+---
+
+### 🔒 Secured with Kubesec | ⚡ Production Ready
+
+Made with ❤️ for Kubernetes

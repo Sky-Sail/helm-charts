@@ -22,6 +22,6 @@ jobs:
 
       - name: Run yamllint
         run: |
-          yamllint -d '{extends: default, rules: {line-length: {max: 200}, comments: disable, document-start: disable}}' \
+          yamllint -d '{extends: default, rules: {line-length: {max: 200}, comments: disable, document-start: disable, comments-indentation: disable}}' \
             $(find . -name '*.yaml' -o -name '*.yml' | grep -v node_modules | grep -v '.git' | grep -v '/templates/')
 

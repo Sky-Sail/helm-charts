@@ -1,0 +1,106 @@
+{{- if .Values.httpproxy.enabled }}
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: {{ include "yopass.fullname" . }}
+  labels:
+    {{- include "yopass.labels" . | nindent 4 }}
+  {{- with .Values.httpproxy.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  virtualhost:
+    fqdn: {{ .Values.httpproxy.virtualhost.fqdn | quote }}
+    {{- if .Values.httpproxy.virtualhost.tls }}
+    tls:
+      {{- if .Values.httpproxy.virtualhost.tls.secretName }}
+      secretName: {{ .Values.httpproxy.virtualhost.tls.secretName | quote }}
+      {{- end }}
+      {{- if .Values.httpproxy.virtualhost.tls.minimumProtocolVersion }}
+      minimumProtocolVersion: {{ .Values.httpproxy.virtualhost.tls.minimumProtocolVersion | quote }}
+      {{- end }}
+      {{- if .Values.httpproxy.virtualhost.tls.enableFallbackCertificate }}
+      enableFallbackCertificate: {{ .Values.httpproxy.virtualhost.tls.enableFallbackCertificate }}
+      {{- end }}
+    {{- end }}
+    {{- if .Values.httpproxy.virtualhost.corsPolicy }}
+    corsPolicy:
+      {{- toYaml .Values.httpproxy.virtualhost.corsPolicy | nindent 6 }}
+    {{- end }}
+    {{- if .Values.httpproxy.virtualhost.rateLimitPolicy }}
+    rateLimitPolicy:
+      {{- toYaml .Values.httpproxy.virtualhost.rateLimitPolicy | nindent 6 }}
+    {{- end }}
+  routes:
+    {{- if .Values.httpproxy.routes }}
+    {{- range .Values.httpproxy.routes }}
+    - conditions:
+        {{- range .conditions }}
+        - prefix: {{ .prefix | quote }}
+        {{- end }}
+      {{- if .timeoutPolicy }}
+      timeoutPolicy:
+        {{- if .timeoutPolicy.response }}
+        response: {{ .timeoutPolicy.response | quote }}
+        {{- end }}
+        {{- if .timeoutPolicy.idle }}
+        idle: {{ .timeoutPolicy.idle | quote }}
+        {{- end }}
+      {{- end }}
+      {{- if .retryPolicy }}
+      retryPolicy:
+        {{- if .retryPolicy.count }}
+        count: {{ .retryPolicy.count }}
+        {{- end }}
+        {{- if .retryPolicy.perTryTimeout }}
+        perTryTimeout: {{ .retryPolicy.perTryTimeout | quote }}
+        {{- end }}
+        {{- if .retryPolicy.retryOn }}
+        retryOn: {{ .retryPolicy.retryOn | quote }}
+        {{- end }}
+      {{- end }}
+      {{- if .loadBalancerPolicy }}
+      loadBalancerPolicy:
+        {{- if .loadBalancerPolicy.strategy }}
+        strategy: {{ .loadBalancerPolicy.strategy | quote }}
+        {{- end }}
+      {{- end }}
+      {{- if .healthCheckPolicy }}
+      healthCheckPolicy:
+        {{- toYaml .healthCheckPolicy | nindent 8 }}
+      {{- end }}
+      services:
+        - name: {{ include "yopass.fullname" $ }}
+          port: {{ $.Values.service.port }}
+          {{- if .weight }}
+          weight: {{ .weight }}
+          {{- end }}
+          {{- if .strategy }}
+          strategy: {{ .strategy | quote }}
+          {{- end }}
+    {{- end }}
+    {{- else }}
+    - conditions:
+        - prefix: /
+      services:
+        - name: {{ include "yopass.fullname" . }}
+          port: {{ .Values.service.port }}
+    {{- end }}
+  {{- if .Values.httpproxy.include }}
+  includes:
+    {{- range .Values.httpproxy.include }}
+    - name: {{ .name | quote }}
+      {{- if .namespace }}
+      namespace: {{ .namespace | quote }}
+      {{- end }}
+      {{- if .conditions }}
+      conditions:
+        {{- range .conditions }}
+        - prefix: {{ .prefix | quote }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+

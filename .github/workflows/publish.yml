@@ -42,83 +42,83 @@ jobs:
             # Create GPG directory if it doesn't exist
             mkdir -p ~/.gnupg
             chmod 700 ~/.gnupg
-            
+
             # Configure GPG for batch mode
             echo "batch" >> ~/.gnupg/gpg.conf
             echo "no-tty" >> ~/.gnupg/gpg.conf
             echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
             echo "no-auto-key-locate" >> ~/.gnupg/gpg.conf
             echo "no-auto-check-trustdb" >> ~/.gnupg/gpg.conf
-            
+
             # Set environment to prevent interactive prompts
             export GPG_TTY=""
             export GNUPGHOME=~/.gnupg
-            
+
             # Import the private key
             echo "$GPG_PRIVATE_KEY" | gpg --batch --yes --import
-            
+
             # List keys for verification
             gpg --list-secret-keys --keyid-format LONG
-            
+
             # Get the key ID from the imported key (extract from sec line)
             # Format: sec   ed25519/9B50CF408ED73162 2025-12-19 [SC]
             GPG_KEY_ID=$(gpg --list-secret-keys --keyid-format LONG | grep -E "^sec" | head -1 | awk '{print $2}' | cut -d'/' -f2)
-            
+
             if [ -z "$GPG_KEY_ID" ]; then
               # Try with SHORT format
               GPG_KEY_ID=$(gpg --list-secret-keys --keyid-format SHORT | grep -E "^sec" | head -1 | awk '{print $2}' | cut -d'/' -f2)
             fi
-            
+
             # Get the full fingerprint for ownertrust (required format)
             # Format:       F81881FAF41751368A6AB6BF9B50CF408ED73162
             GPG_FINGERPRINT=$(gpg --list-secret-keys --keyid-format LONG | grep -A1 "^sec" | grep -E "^      " | head -1 | awk '{print $1}')
-            
+
             # Get the key name/email for Helm (Helm might prefer this over key ID)
             GPG_KEY_NAME=$(gpg --list-secret-keys --keyid-format LONG "$GPG_KEY_ID" | grep -E "^uid" | head -1 | sed -E 's/^uid\s+\[.*\]\s+(.*)$/\1/' | awk -F'<' '{print $1}' | xargs)
             GPG_KEY_EMAIL=$(gpg --list-secret-keys --keyid-format LONG "$GPG_KEY_ID" | grep -E "^uid" | head -1 | sed -E 's/.*<([^>]+)>.*/\1/')
-            
+
             if [ -z "$GPG_KEY_ID" ]; then
               echo "ERROR: Could not extract GPG key ID"
               gpg --list-secret-keys
               exit 1
             fi
-            
+
             if [ -z "$GPG_FINGERPRINT" ]; then
               echo "ERROR: Could not extract GPG fingerprint"
               gpg --list-secret-keys
               exit 1
             fi
-            
+
             # Trust the key (required for Helm signing)
             # Format: FINGERPRINT:trust-level: (6 = ultimate trust)
             echo "$GPG_FINGERPRINT:6:" | gpg --batch --import-ownertrust
-            
+
             # Check trustdb to apply trust settings
             gpg --batch --check-trustdb
-            
+
             # Verify the key is accessible
             echo "=== Verifying key access ==="
             gpg --list-secret-keys "$GPG_KEY_ID"
-            
+
             # Create secring.gpg for Helm (Helm requires legacy format)
             # Export to a temporary location first, then copy to avoid migration triggers
             echo "=== Creating secring.gpg for Helm ==="
             TEMP_SECRING=$(mktemp)
-            
+
             # Export secret keys to temporary file
             if [ -n "$GPG_PASSPHRASE" ]; then
               echo "$GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --export-secret-keys "$GPG_KEY_ID" > "$TEMP_SECRING" 2>&1
             else
               gpg --batch --yes --export-secret-keys "$GPG_KEY_ID" > "$TEMP_SECRING" 2>&1
             fi
-            
+
             # Check if export was successful
             if [ -s "$TEMP_SECRING" ]; then
               # Copy to final location
               cp "$TEMP_SECRING" ~/.gnupg/secring.gpg
               chmod 600 ~/.gnupg/secring.gpg
               echo "secring.gpg created successfully ($(wc -c < ~/.gnupg/secring.gpg) bytes)"
-              
+
               # Verify the key is in the file
               echo "=== Verifying secring.gpg ==="
               if gpg --no-default-keyring --secret-keyring ~/.gnupg/secring.gpg --list-secret-keys "$GPG_KEY_ID" >/dev/null 2>&1; then
@@ -137,7 +137,7 @@ jobs:
               exit 1
             fi
             rm -f "$TEMP_SECRING"
-            
+
             # Preset passphrase in gpg-agent so Helm can sign without prompts
             if [ -n "$GPG_PASSPHRASE" ]; then
               echo "=== Presetting passphrase in gpg-agent ==="
@@ -149,14 +149,14 @@ jobs:
                   echo "Note: gpg-preset-passphrase not available, will cache via test signing"
                 }
               fi
-              
+
               # Test signing to cache the passphrase in gpg-agent
               echo "$GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --sign --default-key "$GPG_KEY_ID" --output /dev/null < /dev/null >/dev/null 2>&1 && echo "Passphrase cached in gpg-agent" || echo "Note: Signing test completed"
             else
               echo "=== Testing secret key access (no passphrase) ==="
               echo "test" | gpg --batch --yes --sign --default-key "$GPG_KEY_ID" --output /dev/null 2>&1 || echo "Note: Signing test completed"
             fi
-            
+
             echo "GPG key imported and trusted. Key ID: $GPG_KEY_ID"
             echo "key_id=$GPG_KEY_ID" >> $GITHUB_OUTPUT
             echo "key_name=$GPG_KEY_NAME" >> $GITHUB_OUTPUT

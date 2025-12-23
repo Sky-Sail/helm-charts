@@ -1,0 +1,70 @@
+# Minimal values file for testing standard deployment
+# This configuration tests the chart with:
+# - No ingress
+# - No gateway (HTTPRoute)
+# - No HTTPProxy
+# - Standard security settings
+# - Basic service configuration
+
+replicaCount: 1
+
+image:
+  repository: jhaals/yopass
+  pullPolicy: IfNotPresent
+  tag: ""
+
+serviceAccount:
+  create: false
+  automount: true
+
+podSecurityContext:
+  fsGroup: 2000
+
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 1337
+
+# All ingress/gateway/httpproxy disabled
+ingress:
+  enabled: false
+
+gateway:
+  enabled: false
+
+httpproxy:
+  enabled: false
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+
+autoscaling:
+  enabled: false
+
+memcached:
+  enabled: true
+
+valkey:
+  enabled: false

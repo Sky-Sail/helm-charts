@@ -50,6 +50,65 @@ ingress:
   #    hosts:
   #      - chart-example.local
 
+# Gateway API (HTTPRoute) - Kubernetes Gateway API standard
+# More information: https://gateway-api.sigs.k8s.io/
+gateway:
+  enabled: false
+  annotations: {}
+  # Gateway name to attach HTTPRoute to (must exist in the cluster)
+  gatewayName: ""
+  # Gateway namespace (defaults to release namespace)
+  gatewayNamespace: ""
+  # Parent references (alternative to gatewayName)
+  # parentRefs:
+  #   - name: my-gateway
+  #     namespace: default
+  hosts:
+    - hostname: chart-example.local
+    # Optional: TLS configuration
+    # tls:
+    #   certificateRefs:
+    #     - name: chart-example-tls
+  # Route rules
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      # Optional: filters
+      # filters:
+      #   - type: RequestRedirect
+      #     requestRedirect:
+      #       scheme: https
+
+# Contour HTTPProxy - Project Contour specific
+# More information: https://projectcontour.io/docs/v1.28.0/config/httpproxy/
+httpproxy:
+  enabled: true
+  annotations: {}
+  # Virtual host configuration
+  virtualhost:
+    fqdn: chart-example.local
+    # Optional: TLS configuration
+    # tls:
+    #   secretName: chart-example-tls
+    #   minimumProtocolVersion: "1.2"
+  # Routes configuration
+  routes:
+    - conditions:
+        - prefix: /
+        # Optional: timeout policy
+        # timeoutPolicy:
+        #   response: 60s
+        #   idle: 3600s
+        # Optional: retry policy
+        # retryPolicy:
+        #   count: 3
+        #   perTryTimeout: 10s
+        # Optional: load balancer policy
+        # loadBalancerPolicy:
+        #   strategy: RoundRobin
+
 resources:
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little

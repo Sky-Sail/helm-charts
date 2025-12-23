@@ -1,0 +1,165 @@
+# Full values file for testing all resources
+# This configuration tests the chart with:
+# - Ingress enabled
+# - Gateway (HTTPRoute) enabled
+# - HTTPProxy enabled
+# - All security settings
+# - All optional features enabled
+
+replicaCount: 2
+
+image:
+  repository: jhaals/yopass
+  pullPolicy: IfNotPresent
+  tag: ""
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  fsGroup: 2000
+
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 1337
+
+# Ingress enabled
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: yopass.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: yopass-tls
+      hosts:
+        - yopass.example.com
+
+# Gateway API (HTTPRoute) enabled
+gateway:
+  enabled: true
+  annotations: {}
+  gatewayName: my-gateway
+  gatewayNamespace: default
+  hosts:
+    - hostname: yopass-gateway.example.com
+      tls:
+        certificateRefs:
+          - name: yopass-gateway-tls
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            set:
+              - name: X-Forwarded-Proto
+                value: https
+
+# Contour HTTPProxy enabled
+httpproxy:
+  enabled: true
+  annotations:
+    projectcontour.io/ingress.class: contour
+  virtualhost:
+    fqdn: yopass-contour.example.com
+    tls:
+      secretName: yopass-contour-tls
+      minimumProtocolVersion: "1.2"
+    corsPolicy:
+      allowOrigin:
+        - "*"
+      allowMethods:
+        - GET
+        - POST
+      allowHeaders:
+        - "*"
+    rateLimitPolicy:
+      local:
+        requests: 100
+        unit: second
+  routes:
+    - conditions:
+        - prefix: /
+      timeoutPolicy:
+        response: 60s
+        idle: 3600s
+      retryPolicy:
+        count: 3
+        perTryTimeout: 10s
+        retryOn: "5xx,gateway-error,connect-failure,refused-stream"
+      loadBalancerPolicy:
+        strategy: RoundRobin
+      healthCheckPolicy:
+        path: /
+        intervalSeconds: 10
+        timeoutSeconds: 3
+        unhealthyThresholdCount: 3
+        healthyThresholdCount: 1
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+volumes: []
+volumeMounts: []
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+memcached:
+  enabled: true
+
+valkey:
+  enabled: false
+  auth:
+    enabled: false
