@@ -1,4 +1,4 @@
-# yopass 🔐
+# yopass
 
 [![Trivy Security Scan - yopass](https://github.com/Sky-Sail/helm-charts/actions/workflows/trivy-scan.yml/badge.svg?branch=main&label=yopass)](https://github.com/Sky-Sail/helm-charts/actions/workflows/trivy-scan.yml)
 [![Kubesec Security Scan](https://github.com/Sky-Sail/helm-charts/actions/workflows/kubesec-scan.yml/badge.svg?branch=main&label=Kubesec)](https://github.com/Sky-Sail/helm-charts/actions/workflows/kubesec-scan.yml)
