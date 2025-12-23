@@ -1,0 +1,7 @@
+# Repository ID from Artifact Hub Control Panel
+# Get this after adding the repository to Artifact Hub
+repositoryID: 9526bc31-ea1f-434f-bd6e-d1f911b1f34f
+
+owners:
+  - name: Sky-Sail
+    email: kacper@karczmarzyk.me
