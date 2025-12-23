@@ -1,6 +1,5 @@
 # yopass
 
-[![Trivy Security Scan - yopass](https://github.com/Sky-Sail/helm-charts/actions/workflows/trivy-scan.yml/badge.svg?branch=main&label=yopass)](https://github.com/Sky-Sail/helm-charts/actions/workflows/trivy-scan.yml)
 [![Kubesec Security Scan](https://github.com/Sky-Sail/helm-charts/actions/workflows/kubesec-scan.yml/badge.svg?branch=main&label=Kubesec)](https://github.com/Sky-Sail/helm-charts/actions/workflows/kubesec-scan.yml)
 
 > 🎯 **Secure by default** | 🛡️ **Production ready** | ⚡ **Kubernetes best practices**
@@ -18,7 +17,6 @@ Yopass is a secure sharing service that allows you to share secrets and sensitiv
 This chart follows security best practices and is scanned regularly:
 
 - ✅ **Kubesec Scan**: Automated security scanning on every push and PR
-- ✅ **Trivy Scan**: Vulnerability and misconfiguration detection
 - ✅ **Non-root user**: Containers run as non-root by default
 - ✅ **Read-only filesystem**: Immutable root filesystem
 - ✅ **Pod Security Context**: Full security context configuration
@@ -187,6 +185,6 @@ See the application's license for details.
 
 ---
 
-### 🔒 Secured with Kubesec | 🛡️ Scanned with Trivy | ⚡ Production Ready
+### 🔒 Secured with Kubesec | ⚡ Production Ready
 
 Made with ❤️ for Kubernetes
