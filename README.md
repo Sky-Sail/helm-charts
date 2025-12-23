@@ -8,6 +8,18 @@ This repository contains Helm charts for deploying applications to Kubernetes.
 
 Each chart in this repository has its own README with detailed documentation. Browse the chart directories to find specific information about each chart.
 
+## Security Best Practices
+
+All charts in this repository follow security best practices by default:
+
+- **Non-root user**: Containers run as non-root users by default
+- **Read-only filesystem**: Filesystems are mounted as read-only where possible
+- **Pod Security Context**: Full pod security context is configured with appropriate security settings
+- **Resource limits**: CPU and memory limits are defined to prevent resource exhaustion
+- **Network policies**: Network policies can be enabled for additional network isolation
+
+These security settings are enabled by default but can be customized in each chart's `values.yaml` file if needed for specific use cases.
+
 ## Usage
 
 ### Add this repository
