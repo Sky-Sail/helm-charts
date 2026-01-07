@@ -167,8 +167,31 @@ jobs:
             echo "key_id=" >> $GITHUB_OUTPUT
           fi
 
+      - name: Fetch gh-pages branch
+        run: |
+          git fetch origin gh-pages:gh-pages || echo "gh-pages branch does not exist yet, will be created"
+
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create packages directory
         run: mkdir -p packages
+
+      - name: Copy existing chart packages
+        run: |
+          if [ -d "gh-pages" ] && [ "$(ls -A gh-pages/*.tgz 2>/dev/null)" ]; then
+            echo "Copying existing chart packages..."
+            cp gh-pages/*.tgz packages/ 2>/dev/null || true
+            cp gh-pages/*.tgz.prov packages/ 2>/dev/null || true
+            echo "Existing packages copied"
+          else
+            echo "No existing packages found"
+          fi
 
       - name: Package all charts
         env:
@@ -222,8 +245,14 @@ jobs:
           GPG_KEY_ID="${{ steps.gpg-setup.outputs.key_id }}"
           GPG_KEY_NAME="${{ steps.gpg-setup.outputs.key_name }}"
 
-          # Create the index first (helm repo index doesn't support --sign flag)
-          helm repo index packages/ --url https://sky-sail.github.io/helm-charts/
+          # Merge with existing index if it exists
+          if [ -f "gh-pages/index.yaml" ]; then
+            echo "Merging with existing index.yaml..."
+            helm repo index packages/ --url https://sky-sail.github.io/helm-charts/ --merge gh-pages/index.yaml
+          else
+            echo "Creating new index.yaml..."
+            helm repo index packages/ --url https://sky-sail.github.io/helm-charts/
+          fi
 
           # Sign the index.yaml file if GPG key is available
           if [ -n "$GPG_KEY_ID" ] && [ -f packages/index.yaml ]; then
@@ -273,8 +302,10 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./packages
-          keep_files: false
-          force_orphan: true
+          publish_branch: gh-pages
+          keep_files: true
+          force_orphan: false
+          allow_empty_commit: false
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
