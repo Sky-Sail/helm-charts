@@ -19,6 +19,8 @@ spec:
       {{- end }}
       {{- if .sectionName }}
       sectionName: {{ .sectionName }}
+      {{- else if $.Values.gateway.httpRedirect.enabled }}
+      sectionName: "https"
       {{- end }}
     {{- end }}
   {{- else if .Values.gateway.gatewayName }}
@@ -28,6 +30,9 @@ spec:
       namespace: {{ .Values.gateway.gatewayNamespace }}
       {{- else }}
       namespace: {{ .Release.Namespace }}
+      {{- end }}
+      {{- if .Values.gateway.httpRedirect.enabled }}
+      sectionName: "https"
       {{- end }}
   {{- end }}
   hostnames:

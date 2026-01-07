@@ -1,0 +1,63 @@
+{{- if and .Values.gateway.enabled .Values.gateway.httpRedirect.enabled }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "yopass.fullname" . }}-redirect
+  labels:
+    {{- include "yopass.labels" . | nindent 4 }}
+  {{- with .Values.gateway.httpRedirect.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.gateway.httpRedirect.parentRefs }}
+  parentRefs:
+    {{- range .Values.gateway.httpRedirect.parentRefs }}
+    - name: {{ .name }}
+      {{- if .namespace }}
+      namespace: {{ .namespace }}
+      {{- end }}
+      {{- if .sectionName }}
+      sectionName: {{ .sectionName }}
+      {{- else }}
+      sectionName: "http"
+      {{- end }}
+    {{- end }}
+  {{- else if .Values.gateway.gatewayName }}
+  parentRefs:
+    - name: {{ .Values.gateway.gatewayName }}
+      {{- if .Values.gateway.gatewayNamespace }}
+      namespace: {{ .Values.gateway.gatewayNamespace }}
+      {{- else }}
+      namespace: {{ .Release.Namespace }}
+      {{- end }}
+      sectionName: "http"
+  {{- end }}
+  hostnames:
+    {{- if .Values.gateway.httpRedirect.hosts }}
+    {{- range .Values.gateway.httpRedirect.hosts }}
+    - {{ .hostname | quote }}
+    {{- end }}
+    {{- else }}
+    {{- range .Values.gateway.hosts }}
+    - {{ .hostname | quote }}
+    {{- end }}
+    {{- end }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: {{ .Values.gateway.httpRedirect.redirect.scheme | default "https" }}
+            statusCode: {{ .Values.gateway.httpRedirect.redirect.statusCode | default 301 }}
+            {{- if .Values.gateway.httpRedirect.redirect.port }}
+            port: {{ .Values.gateway.httpRedirect.redirect.port }}
+            {{- end }}
+            {{- if .Values.gateway.httpRedirect.redirect.hostname }}
+            hostname: {{ .Values.gateway.httpRedirect.redirect.hostname | quote }}
+            {{- end }}
+{{- end }}
+

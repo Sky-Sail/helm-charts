@@ -142,6 +142,43 @@ gateway:
 
 For more information, see the [Gateway API documentation](https://gateway-api.sigs.k8s.io/).
 
+### HTTP-to-HTTPS Redirect
+
+This chart supports automatic HTTP-to-HTTPS redirect using a separate HTTPRoute resource. When enabled, it creates a redirect HTTPRoute that attaches to the HTTP listener (port 80) and redirects all traffic to HTTPS.
+
+To enable HTTP-to-HTTPS redirect:
+
+```yaml
+gateway:
+  enabled: true
+  gatewayName: my-gateway
+  hosts:
+    - hostname: yopass.example.com
+  httpRedirect:
+    enabled: true
+    redirect:
+      scheme: "https"
+      statusCode: 301
+      port: 443
+```
+
+**How it works:**
+
+1. When `gateway.httpRedirect.enabled: true`, a separate HTTPRoute named `{release-name}-yopass-redirect` is created
+2. The redirect HTTPRoute attaches to the HTTP listener (port 80) via `sectionName: "http"`
+3. The main HTTPRoute automatically attaches only to the HTTPS listener (port 443) via `sectionName: "https"` to prevent conflicts
+4. All HTTP traffic is redirected to HTTPS using the configured status code (default: 301)
+
+**Configuration options:**
+
+- `httpRedirect.enabled`: Enable/disable HTTP-to-HTTPS redirect (default: `false`)
+- `httpRedirect.redirect.scheme`: Redirect scheme (default: `"https"`)
+- `httpRedirect.redirect.statusCode`: HTTP status code for redirect (default: `301`)
+- `httpRedirect.redirect.port`: Target port for redirect (default: `443`)
+- `httpRedirect.redirect.hostname`: Optional hostname override for redirect
+- `httpRedirect.parentRefs`: Optional custom parent references (defaults to `gatewayName + "http"` section)
+- `httpRedirect.hosts`: Optional hosts for redirect HTTPRoute (defaults to `gateway.hosts`)
+
 ## Contour HTTPProxy
 
 This chart supports Project Contour's HTTPProxy resource. To enable HTTPProxy support:

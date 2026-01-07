@@ -75,6 +75,14 @@ gateway:
             set:
               - name: X-Forwarded-Proto
                 value: https
+  # HTTP-to-HTTPS redirect enabled
+  httpRedirect:
+    enabled: true
+    annotations: {}
+    redirect:
+      scheme: "https"
+      statusCode: 301
+      port: 443
 
 # Contour HTTPProxy enabled
 httpproxy:

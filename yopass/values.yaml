@@ -80,6 +80,27 @@ gateway:
       #   - type: RequestRedirect
       #     requestRedirect:
       #       scheme: https
+  # HTTP-to-HTTPS redirect configuration
+  # Creates a separate HTTPRoute for HTTP-to-HTTPS redirect
+  # Attaches to HTTP listener (port 80) via sectionName: "http"
+  httpRedirect:
+    enabled: false
+    annotations: {}
+    # Optional: Custom parent references for redirect HTTPRoute
+    # If not specified, defaults to gatewayName + "http" section
+    # parentRefs:
+    #   - name: my-gateway
+    #     namespace: default
+    #     sectionName: "http"
+    # Optional: Hosts for redirect HTTPRoute (defaults to gateway.hosts)
+    # hosts:
+    #   - hostname: example.com
+    redirect:
+      scheme: "https"
+      statusCode: 301
+      port: 443
+      # Optional: hostname override for redirect
+      # hostname: ""
 
 # Contour HTTPProxy - Project Contour specific
 # More information: https://projectcontour.io/docs/v1.28.0/config/httpproxy/
