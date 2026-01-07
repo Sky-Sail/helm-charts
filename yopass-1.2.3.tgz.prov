@@ -1,0 +1,34 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+apiVersion: v2
+appVersion: 12.5.0
+dependencies:
+- - condition: memcached.enabled
+  name: memcached
+  repository: oci://registry-1.docker.io/cloudpirates
+  version: 0.8.1
+- - condition: valkey.enabled
+  name: valkey
+  repository: oci://registry-1.docker.io/cloudpirates
+  version: 0.13.0
+description: A Helm chart for Yopass - secure sharing service for secrets, passwords
+  and files
+maintainers:
+- - email: kacper@karczmarzyk.me
+  name: Kacper Karczmarzyk
+name: yopass
+type: application
+version: 1.2.3
+
+...
+files:
+  yopass-1.2.3.tgz: sha256:f69540b56a6a8e0741f7aa0de775ca7011ae3dad7386a83664dc40722eabe83d
+
+-----BEGIN PGP SIGNATURE-----
+
+wrsEARYKAG0FgmleJw8JEJtQz0CO1zFiRRQAAAAAABwAIHNhbHRAbm90YXRpb25z
+Lm9wZW5wZ3Bqcy5vcmeVNY2oG6kjBaBSL7nGxkeqHS9NsSSa+T2Sh5EBt0DaqRYh
+BPgYgfr0F1E2imq2v5tQz0CO1zFiAACE/gEA/Iezbv+XtdogW/hKWX3ofxvPrDWw
+mtvBziLteaACMNQA/iI7Mc7+8/a7CNQSXcpEmfB/pv6IY3godPiA/Py21JII
+-----END PGP SIGNATURE-----
