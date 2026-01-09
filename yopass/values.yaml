@@ -98,7 +98,8 @@ gateway:
     redirect:
       scheme: "https"
       statusCode: 301
-      port: 443
+      # Optional: port override for redirect (defaults to 443 for HTTPS)
+      # port: 443
       # Optional: hostname override for redirect
       # hostname: ""
 
