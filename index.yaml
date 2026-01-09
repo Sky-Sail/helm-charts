@@ -3,7 +3,7 @@ entries:
   yopass:
   - apiVersion: v2
     appVersion: 12.5.0
-    created: "2026-01-09T12:45:54.352452383Z"
+    created: "2026-01-09T12:45:56.01291906Z"
     dependencies:
     - condition: memcached.enabled
       name: memcached
@@ -15,7 +15,7 @@ entries:
       version: 0.13.0
     description: A Helm chart for Yopass - secure sharing service for secrets, passwords
       and files
-    digest: 07d1ca47c09561cb93e8764573bc5051db9c9bdd0792d90832eb08db13c24056
+    digest: edb6c7d1edbc8cec7f31ce9c9ec8c456e87dc2cfd32bf44f26fe292641554324
     maintainers:
     - email: kacper@karczmarzyk.me
       name: Kacper Karczmarzyk
@@ -26,7 +26,7 @@ entries:
     version: 1.3.1
   - apiVersion: v2
     appVersion: 12.5.0
-    created: "2026-01-09T12:45:54.349074609Z"
+    created: "2026-01-09T12:45:56.009528487Z"
     dependencies:
     - condition: memcached.enabled
       name: memcached
@@ -49,7 +49,7 @@ entries:
     version: 1.3.0
   - apiVersion: v2
     appVersion: 12.5.0
-    created: "2026-01-09T12:45:54.344753983Z"
+    created: "2026-01-09T12:45:56.005295879Z"
     dependencies:
     - condition: memcached.enabled
       name: memcached
@@ -70,4 +70,4 @@ entries:
     urls:
     - https://sky-sail.github.io/helm-charts/yopass-1.2.3.tgz
     version: 1.2.3
-generated: "2026-01-09T12:45:54.340942924Z"
+generated: "2026-01-09T12:45:56.001605248Z"
