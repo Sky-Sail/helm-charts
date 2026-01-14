@@ -3,10 +3,10 @@ entries:
   pritunl-zero:
   - apiVersion: v2
     appVersion: 1.0.3648.46
-    created: "2026-01-14T21:54:19.617845133Z"
+    created: "2026-01-14T21:54:45.054456924Z"
     description: A Helm chart for Pritunl Zero - Zero Trust Network Access (ZTNA)
       solution
-    digest: fdfa4e8522a2bde08ecb6c69f2f9bc5f5b264dfafcd347a1d42b14b59b1ba7a3
+    digest: fea8ed7a42d3251cedf614890b193c8c6f5538c7afffe853f23a06d5ed781eef
     maintainers:
     - email: kacper@karczmarzyk.me
       name: Kacper Karczmarzyk
@@ -17,7 +17,7 @@ entries:
     version: 0.1.4
   - apiVersion: v2
     appVersion: 1.0.3648.46
-    created: "2026-01-14T21:54:19.617173709Z"
+    created: "2026-01-14T21:54:45.053795943Z"
     description: A Helm chart for Pritunl Zero - Zero Trust Network Access (ZTNA)
       solution
     digest: c51a66371af5879a0d3fa3fbe9514015c76f1759ffc3386be97ff7c84092e77e
@@ -31,7 +31,7 @@ entries:
     version: 0.1.3
   - apiVersion: v2
     appVersion: 1.0.3648.46
-    created: "2026-01-14T21:54:19.616509388Z"
+    created: "2026-01-14T21:54:45.053144831Z"
     description: A Helm chart for Pritunl Zero - Zero Trust Network Access (ZTNA)
       solution
     digest: 13a3509057a84129c8cb359133aa00abf0d8d66a843661bdd5c7aaa907d7c07c
@@ -45,7 +45,7 @@ entries:
     version: 0.1.2
   - apiVersion: v2
     appVersion: 1.0.3648.46
-    created: "2026-01-14T21:54:19.615869132Z"
+    created: "2026-01-14T21:54:45.052516441Z"
     description: A Helm chart for Pritunl Zero - Zero Trust Network Access (ZTNA)
       solution
     digest: c9418cc9ca937abd41de33df89b90f5d0cf244d83c1705840e9ab04ddf225b14
@@ -59,7 +59,7 @@ entries:
     version: 0.1.1
   - apiVersion: v2
     appVersion: 1.0.3648.46
-    created: "2026-01-14T21:54:19.615100948Z"
+    created: "2026-01-14T21:54:45.05184466Z"
     description: A Helm chart for Pritunl Zero - Zero Trust Network Access (ZTNA)
       solution
     digest: bd7da0a89e06307232e6cb87d0090e6bdd5ea4b0cb54a07991d7db67902fb131
@@ -74,7 +74,7 @@ entries:
   yopass:
   - apiVersion: v2
     appVersion: 12.5.0
-    created: "2026-01-14T21:54:19.630062012Z"
+    created: "2026-01-14T21:54:45.066678658Z"
     dependencies:
     - condition: memcached.enabled
       name: memcached
@@ -86,7 +86,7 @@ entries:
       version: 0.13.0
     description: A Helm chart for Yopass - secure sharing service for secrets, passwords
       and files
-    digest: 7e52c691f685bbb36fa5b716af459fcf7d3a7d815b1b555edd83a7232f8364d1
+    digest: 851cb7a7a63832fe032b255120d5e2311bb36c5234c4484c7b8d07c42ac23c0a
     maintainers:
     - email: kacper@karczmarzyk.me
       name: Kacper Karczmarzyk
@@ -97,7 +97,7 @@ entries:
     version: 1.3.1
   - apiVersion: v2
     appVersion: 12.5.0
-    created: "2026-01-14T21:54:19.625658439Z"
+    created: "2026-01-14T21:54:45.062242248Z"
     dependencies:
     - condition: memcached.enabled
       name: memcached
@@ -120,7 +120,7 @@ entries:
     version: 1.3.0
   - apiVersion: v2
     appVersion: 12.5.0
-    created: "2026-01-14T21:54:19.622206212Z"
+    created: "2026-01-14T21:54:45.058885378Z"
     dependencies:
     - condition: memcached.enabled
       name: memcached
@@ -141,4 +141,4 @@ entries:
     urls:
     - https://sky-sail.github.io/helm-charts/yopass-1.2.3.tgz
     version: 1.2.3
-generated: "2026-01-14T21:54:19.614306496Z"
+generated: "2026-01-14T21:54:45.051069758Z"
