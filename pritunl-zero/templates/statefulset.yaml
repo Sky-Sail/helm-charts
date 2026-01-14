@@ -96,7 +96,8 @@ spec:
             {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
-        {{- if .Values.caCertsSidecar.enabled }}
+      {{- if .Values.caCertsSidecar.enabled }}
+      initContainers:
         - name: ca-certs-updater
           image: {{ .Values.caCertsSidecar.image.repository }}:{{ .Values.caCertsSidecar.image.tag }}
           imagePullPolicy: {{ .Values.caCertsSidecar.image.pullPolicy }}
@@ -105,14 +106,22 @@ spec:
             - -c
             - |
               apk add --no-cache ca-certificates >/dev/null 2>&1 || true
-              while true; do
-                if [ -d "/usr/local/share/ca-certificates" ] && [ "$(ls -A /usr/local/share/ca-certificates 2>/dev/null)" ]; then
-                  update-ca-certificates 2>/dev/null || true
-                  cp -f /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt.updated 2>/dev/null || true
-                  cp -f /etc/ssl/certs/ca-certificates.crt.updated /etc/ssl/certs/ca-certificates.crt 2>/dev/null || true
-                fi
-                sleep {{ .Values.caCertsSidecar.updateInterval }}
-              done
+              # Update certificates
+              if [ -d "/usr/local/share/ca-certificates" ] && [ "$(ls -A /usr/local/share/ca-certificates 2>/dev/null)" ]; then
+                update-ca-certificates 2>/dev/null || true
+              else
+                # Initialize with system certificates even if no custom certs
+                update-ca-certificates 2>/dev/null || true
+              fi
+              # Ensure /etc/ca-certificates structure exists
+              mkdir -p /etc/ca-certificates/update.d 2>/dev/null || true
+              # Verify certificate bundle is available
+              if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
+                echo "CA certificates initialized successfully"
+                ls -la /etc/ssl/certs/ca-certificates.crt >/dev/null 2>&1 || true
+              else
+                echo "Warning: ca-certificates.crt not found after update"
+              fi
           volumeMounts:
             - name: ca-certs
               mountPath: /usr/local/share/ca-certificates
@@ -133,7 +142,7 @@ spec:
                 - CHOWN
                 - FOWNER
                 - DAC_OVERRIDE
-        {{- end }}
+      {{- end }}
       volumes:
         {{- if .Values.securityContext.readOnlyRootFilesystem }}
         - name: tmp

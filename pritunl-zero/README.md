@@ -167,11 +167,11 @@ Logs are written to `/var/log/pritunl-zero.log` and can be accessed by:
 kubectl exec -it <pod-name> -- cat /var/log/pritunl-zero.log
 ```
 
-## CA Certificates Sidecar
+## CA Certificates Init Container
 
-This chart supports an optional sidecar container for updating CA certificates. This is useful when you need to add custom CA certificates or update the certificate store.
+This chart supports an optional init container for initializing and updating CA certificates before the main container starts. This is useful when you need to add custom CA certificates or update the certificate store.
 
-**Enable the CA certificates sidecar:**
+**Enable the CA certificates init container:**
 
 ```yaml
 caCertsSidecar:
@@ -179,7 +179,6 @@ caCertsSidecar:
   image:
     repository: alpine
     tag: "latest"
-  updateInterval: 3600  # Check for updates every hour
   # Optional: Use a ConfigMap containing CA certificates
   # configMap: "custom-ca-certs"
 ```
@@ -194,7 +193,7 @@ kubectl create configmap custom-ca-certs \
   --namespace=your-namespace
 ```
 
-2. Configure the sidecar to use it:
+2. Configure the init container to use it:
 
 ```yaml
 caCertsSidecar:
@@ -202,10 +201,15 @@ caCertsSidecar:
   configMap: custom-ca-certs
 ```
 
-The sidecar will:
+The init container will:
+- Install and initialize the CA certificates package
 - Mount CA certificates from the ConfigMap (if specified) or use an emptyDir
-- Periodically update the certificate store
-- Share updated certificates with the main container via mounted volumes at `/etc/ssl/certs` and `/etc/ca-certificates`
+- Run `update-ca-certificates` to generate the certificate bundle
+- Share updated certificates with the main container via mounted volumes:
+  - `/etc/ssl/certs` - Contains the certificate bundle (`ca-certificates.crt`)
+  - `/etc/ca-certificates` - Contains certificate update directory structure
+
+**Note:** The init container runs once before the main container starts. The main container mounts these volumes to access the updated certificates. The certificate bundle is available at `/etc/ssl/certs/ca-certificates.crt` in the main container.
 
 ## Ingress
 

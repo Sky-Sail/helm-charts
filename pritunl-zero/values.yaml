@@ -194,20 +194,18 @@ persistence:
   # Size of PVC
   size: 1Gi
 
-# CA Certificates Sidecar
-# Sidecar container to update CA certificates
+# CA Certificates Init Container
+# Init container to initialize and update CA certificates before the main container starts
 caCertsSidecar:
   enabled: false
   image:
     repository: alpine
     tag: "latest"
     pullPolicy: IfNotPresent
-  # Update interval in seconds (how often to check for certificate updates)
-  updateInterval: 3600
   # Optional: ConfigMap name containing CA certificates
   # If not specified, uses emptyDir
   # configMap: ""
-  # Resources for the sidecar container
+  # Resources for the init container
   resources:
     limits:
       cpu: 50m
