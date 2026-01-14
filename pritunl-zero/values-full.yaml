@@ -1,11 +1,10 @@
 # Full values file for testing all resources
 # This configuration tests the chart with:
+# - StatefulSet with PVC for /etc config storage (always 1 replica)
 # - Ingress enabled
 # - Gateway (HTTPRoute) enabled
 # - All security settings
 # - All optional features enabled
-
-replicaCount: 2
 
 image:
   repository: docker.io/pritunl/pritunl-zero
@@ -134,12 +133,6 @@ readinessProbe:
   periodSeconds: 5
   timeoutSeconds: 3
   failureThreshold: 3
-
-autoscaling:
-  enabled: true
-  minReplicas: 2
-  maxReplicas: 10
-  targetCPUUtilizationPercentage: 80
 
 volumes: []
 volumeMounts: []

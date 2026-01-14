@@ -1,11 +1,11 @@
-# Minimal values file for testing standard deployment
+# Minimal values file for testing standard StatefulSet deployment
 # This configuration tests the chart with:
 # - No ingress
 # - No gateway (HTTPRoute)
 # - Standard security settings
 # - Basic service configuration
-
-replicaCount: 1
+# - PVC enabled for /etc config storage
+# - Always 1 replica (StatefulSet)
 
 image:
   repository: docker.io/pritunl/pritunl-zero
@@ -60,6 +60,3 @@ readinessProbe:
   httpGet:
     path: /
     port: http
-
-autoscaling:
-  enabled: false
