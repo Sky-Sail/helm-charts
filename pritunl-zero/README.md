@@ -18,7 +18,7 @@ This chart follows security best practices and is scanned regularly:
 
 - ✅ **Kubesec Scan**: Automated security scanning on every push and PR
 - ✅ **Non-root user**: Containers run as non-root by default
-- ✅ **Read-only filesystem**: Immutable root filesystem
+- ✅ **Read-only filesystem**: Immutable root filesystem with automatic `/tmp` emptyDir mount
 - ✅ **Pod Security Context**: Full security context configuration
 - ✅ **Resource limits**: CPU and memory limits defined
 
