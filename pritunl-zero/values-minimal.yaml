@@ -63,4 +63,3 @@ readinessProbe:
 
 autoscaling:
   enabled: false
-
