@@ -3,7 +3,21 @@ entries:
   pritunl-zero:
   - apiVersion: v2
     appVersion: 1.0.3648.46
-    created: "2026-01-14T22:04:39.431938678Z"
+    created: "2026-01-14T22:09:23.764973239Z"
+    description: A Helm chart for Pritunl Zero - Zero Trust Network Access (ZTNA)
+      solution
+    digest: 91aafe369f0629646d795aa5341a8ccb94ba396a2f2bb500a6239710cd1bb485
+    maintainers:
+    - email: kacper@karczmarzyk.me
+      name: Kacper Karczmarzyk
+    name: pritunl-zero
+    type: application
+    urls:
+    - https://sky-sail.github.io/helm-charts/pritunl-zero-0.1.7.tgz
+    version: 0.1.7
+  - apiVersion: v2
+    appVersion: 1.0.3648.46
+    created: "2026-01-14T22:09:23.764286857Z"
     description: A Helm chart for Pritunl Zero - Zero Trust Network Access (ZTNA)
       solution
     digest: 6702c0a72ac9cc658a297d92beb7271ae397cb2c1938e32e3eba5b5f13e0025d
@@ -17,7 +31,7 @@ entries:
     version: 0.1.6
   - apiVersion: v2
     appVersion: 1.0.3648.46
-    created: "2026-01-14T22:04:39.431244338Z"
+    created: "2026-01-14T22:09:23.763627746Z"
     description: A Helm chart for Pritunl Zero - Zero Trust Network Access (ZTNA)
       solution
     digest: 7478ab3102e7dd5da6d105a5719a70d20f2f0eaee845857bc7e14a1a860af4df
@@ -31,7 +45,7 @@ entries:
     version: 0.1.4
   - apiVersion: v2
     appVersion: 1.0.3648.46
-    created: "2026-01-14T22:04:39.430540069Z"
+    created: "2026-01-14T22:09:23.762934904Z"
     description: A Helm chart for Pritunl Zero - Zero Trust Network Access (ZTNA)
       solution
     digest: c51a66371af5879a0d3fa3fbe9514015c76f1759ffc3386be97ff7c84092e77e
@@ -45,7 +59,7 @@ entries:
     version: 0.1.3
   - apiVersion: v2
     appVersion: 1.0.3648.46
-    created: "2026-01-14T22:04:39.429848734Z"
+    created: "2026-01-14T22:09:23.762214171Z"
     description: A Helm chart for Pritunl Zero - Zero Trust Network Access (ZTNA)
       solution
     digest: 13a3509057a84129c8cb359133aa00abf0d8d66a843661bdd5c7aaa907d7c07c
@@ -59,7 +73,7 @@ entries:
     version: 0.1.2
   - apiVersion: v2
     appVersion: 1.0.3648.46
-    created: "2026-01-14T22:04:39.429207683Z"
+    created: "2026-01-14T22:09:23.761536793Z"
     description: A Helm chart for Pritunl Zero - Zero Trust Network Access (ZTNA)
       solution
     digest: c9418cc9ca937abd41de33df89b90f5d0cf244d83c1705840e9ab04ddf225b14
@@ -73,7 +87,7 @@ entries:
     version: 0.1.1
   - apiVersion: v2
     appVersion: 1.0.3648.46
-    created: "2026-01-14T22:04:39.428569276Z"
+    created: "2026-01-14T22:09:23.760905964Z"
     description: A Helm chart for Pritunl Zero - Zero Trust Network Access (ZTNA)
       solution
     digest: bd7da0a89e06307232e6cb87d0090e6bdd5ea4b0cb54a07991d7db67902fb131
@@ -88,7 +102,7 @@ entries:
   yopass:
   - apiVersion: v2
     appVersion: 12.5.0
-    created: "2026-01-14T22:04:39.44413631Z"
+    created: "2026-01-14T22:09:23.777316192Z"
     dependencies:
     - condition: memcached.enabled
       name: memcached
@@ -100,7 +114,7 @@ entries:
       version: 0.13.0
     description: A Helm chart for Yopass - secure sharing service for secrets, passwords
       and files
-    digest: 0296ec99f247f6b21942c36a49f645f3d7f21aca5ddb2b8210866def3db6fae8
+    digest: 49225f884b73cbb5a5c6f1ea9c4325c561ae67a9610373ddf213f829c48fa4b9
     maintainers:
     - email: kacper@karczmarzyk.me
       name: Kacper Karczmarzyk
@@ -111,7 +125,7 @@ entries:
     version: 1.3.1
   - apiVersion: v2
     appVersion: 12.5.0
-    created: "2026-01-14T22:04:39.439931092Z"
+    created: "2026-01-14T22:09:23.773221728Z"
     dependencies:
     - condition: memcached.enabled
       name: memcached
@@ -134,7 +148,7 @@ entries:
     version: 1.3.0
   - apiVersion: v2
     appVersion: 12.5.0
-    created: "2026-01-14T22:04:39.436310544Z"
+    created: "2026-01-14T22:09:23.769234864Z"
     dependencies:
     - condition: memcached.enabled
       name: memcached
@@ -155,4 +169,4 @@ entries:
     urls:
     - https://sky-sail.github.io/helm-charts/yopass-1.2.3.tgz
     version: 1.2.3
-generated: "2026-01-14T22:04:39.42779106Z"
+generated: "2026-01-14T22:09:23.760108506Z"
