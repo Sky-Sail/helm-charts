@@ -105,23 +105,49 @@ spec:
             - /bin/sh
             - -c
             - |
-              apk add --no-cache ca-certificates >/dev/null 2>&1 || true
-              # Update certificates
+              # Install ca-certificates package
+              apk add --no-cache ca-certificates >/dev/null 2>&1 || {
+                echo "Error: Failed to install ca-certificates package"
+                exit 1
+              }
+              # Ensure directories exist (volumes are already mounted at this point)
+              mkdir -p /usr/local/share/ca-certificates /etc/ca-certificates/update.d /etc/ssl/certs 2>/dev/null || true
+              # Run update-ca-certificates to generate the bundle in the mounted volume
+              # This will read from /usr/share/ca-certificates/ and write to /etc/ssl/certs/
+              update-ca-certificates 2>&1
+              UPDATE_EXIT=$?
+              # If update-ca-certificates failed, try manual method
+              if [ $UPDATE_EXIT -ne 0 ] || [ ! -f /etc/ssl/certs/ca-certificates.crt ]; then
+                echo "Warning: update-ca-certificates failed or bundle not found, trying manual method..."
+                # Manually create bundle from system certificates
+                if [ -d /usr/share/ca-certificates ]; then
+                  find /usr/share/ca-certificates -name "*.crt" -type f -exec cat {} \; > /etc/ssl/certs/ca-certificates.crt 2>/dev/null || true
+                fi
+              fi
+              # If custom certs exist, add them to the bundle
               if [ -d "/usr/local/share/ca-certificates" ] && [ "$(ls -A /usr/local/share/ca-certificates 2>/dev/null)" ]; then
-                update-ca-certificates 2>/dev/null || true
-              else
-                # Initialize with system certificates even if no custom certs
-                update-ca-certificates 2>/dev/null || true
+                echo "Found custom certificates, adding to bundle..."
+                find /usr/local/share/ca-certificates -type f \( -name "*.crt" -o -name "*.pem" \) -exec cat {} \; >> /etc/ssl/certs/ca-certificates.crt 2>/dev/null || true
               fi
-              # Ensure /etc/ca-certificates structure exists
-              mkdir -p /etc/ca-certificates/update.d 2>/dev/null || true
-              # Verify certificate bundle is available
+              # Verify certificate bundle exists in the mounted volume
               if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
-                echo "CA certificates initialized successfully"
-                ls -la /etc/ssl/certs/ca-certificates.crt >/dev/null 2>&1 || true
+                CERT_COUNT=$(grep -c "BEGIN CERTIFICATE" /etc/ssl/certs/ca-certificates.crt 2>/dev/null || echo "0")
+                if [ "$CERT_COUNT" -gt 0 ]; then
+                  echo "CA certificates initialized successfully (found $CERT_COUNT certificates)"
+                  ls -lh /etc/ssl/certs/ca-certificates.crt 2>/dev/null || true
+                else
+                  echo "Error: Certificate bundle exists but appears empty"
+                  exit 1
+                fi
               else
-                echo "Warning: ca-certificates.crt not found after update"
+                echo "Error: ca-certificates.crt not found after initialization"
+                echo "Debug: Listing /etc/ssl/certs/ contents:"
+                ls -la /etc/ssl/certs/ 2>&1 || true
+                exit 1
               fi
+              # Ensure /etc/ca-certificates structure is complete
+              mkdir -p /etc/ca-certificates/update.d 2>/dev/null || true
+              echo "Init container completed successfully"
           volumeMounts:
             - name: ca-certs
               mountPath: /usr/local/share/ca-certificates
