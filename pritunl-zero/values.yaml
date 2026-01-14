@@ -194,6 +194,28 @@ persistence:
   # Size of PVC
   size: 1Gi
 
+# CA Certificates Sidecar
+# Sidecar container to update CA certificates
+caCertsSidecar:
+  enabled: false
+  image:
+    repository: alpine
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  # Update interval in seconds (how often to check for certificate updates)
+  updateInterval: 3600
+  # Optional: ConfigMap name containing CA certificates
+  # If not specified, uses emptyDir
+  # configMap: ""
+  # Resources for the sidecar container
+  resources:
+    limits:
+      cpu: 50m
+      memory: 32Mi
+    requests:
+      cpu: 10m
+      memory: 16Mi
+
 # Additional volumes on the output StatefulSet definition.
 volumes: []
 # - name: foo

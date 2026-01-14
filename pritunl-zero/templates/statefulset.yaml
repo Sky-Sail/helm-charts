@@ -31,18 +31,6 @@ spec:
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if .Values.securityContext.readOnlyRootFilesystem }}
-      initContainers:
-        - name: log-redirect
-          image: busybox:latest
-          command: ['sh', '-c', 'ln -sf /dev/stdout /var/log/pritunl-zero.log']
-          volumeMounts:
-            - name: varlog
-              mountPath: /var/log
-          securityContext:
-            runAsUser: 0
-            runAsNonRoot: false
-      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           {{- with .Values.securityContext }}
@@ -99,14 +87,71 @@ spec:
             - name: varlog
               mountPath: /var/log
             {{- end }}
+            {{- if .Values.caCertsSidecar.enabled }}
+            - name: etc-ssl-certs
+              mountPath: /etc/ssl/certs
+            - name: etc-ca-certificates
+              mountPath: /etc/ca-certificates
+            {{- end }}
             {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
+        {{- if .Values.caCertsSidecar.enabled }}
+        - name: ca-certs-updater
+          image: {{ .Values.caCertsSidecar.image.repository }}:{{ .Values.caCertsSidecar.image.tag }}
+          imagePullPolicy: {{ .Values.caCertsSidecar.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              apk add --no-cache ca-certificates >/dev/null 2>&1 || true
+              while true; do
+                if [ -d "/usr/local/share/ca-certificates" ] && [ "$(ls -A /usr/local/share/ca-certificates 2>/dev/null)" ]; then
+                  update-ca-certificates 2>/dev/null || true
+                  cp -f /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt.updated 2>/dev/null || true
+                  cp -f /etc/ssl/certs/ca-certificates.crt.updated /etc/ssl/certs/ca-certificates.crt 2>/dev/null || true
+                fi
+                sleep {{ .Values.caCertsSidecar.updateInterval }}
+              done
+          volumeMounts:
+            - name: ca-certs
+              mountPath: /usr/local/share/ca-certificates
+              readOnly: true
+            - name: etc-ssl-certs
+              mountPath: /etc/ssl/certs
+            - name: etc-ca-certificates
+              mountPath: /etc/ca-certificates
+          {{- with .Values.caCertsSidecar.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            runAsUser: 0
+            runAsNonRoot: false
+            capabilities:
+              add:
+                - CHOWN
+                - FOWNER
+                - DAC_OVERRIDE
+        {{- end }}
       volumes:
         {{- if .Values.securityContext.readOnlyRootFilesystem }}
         - name: tmp
           emptyDir: {}
         - name: varlog
+          emptyDir: {}
+        {{- end }}
+        {{- if .Values.caCertsSidecar.enabled }}
+        - name: ca-certs
+          {{- if .Values.caCertsSidecar.configMap }}
+          configMap:
+            name: {{ .Values.caCertsSidecar.configMap }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: etc-ssl-certs
+          emptyDir: {}
+        - name: etc-ca-certificates
           emptyDir: {}
         {{- end }}
         {{- with .Values.volumes }}

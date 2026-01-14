@@ -19,7 +19,7 @@ This chart follows security best practices and is scanned regularly:
 - ✅ **Kubesec Scan**: Automated security scanning on every push and PR
 - ✅ **Non-root user**: Containers run as non-root by default
 - ✅ **Read-only filesystem**: Immutable root filesystem with automatic `/tmp` and `/var/log` emptyDir mounts
-- ✅ **Log redirection**: Logs automatically redirected to stdout via symlink
+- ✅ **CA Certificates**: Optional sidecar container for updating CA certificates
 - ✅ **Pod Security Context**: Full security context configuration
 - ✅ **Resource limits**: CPU and memory limits defined
 
@@ -125,6 +125,9 @@ env:
 | `mongoSecret.enabled` | Use existing secret for MONGO_URI | `false` |
 | `mongoSecret.name` | Name of the existing secret | `""` |
 | `mongoSecret.key` | Key in secret containing MONGO_URI | `"mongo-uri"` |
+| `caCertsSidecar.enabled` | Enable CA certificates sidecar | `false` |
+| `caCertsSidecar.updateInterval` | Update interval in seconds | `3600` |
+| `caCertsSidecar.configMap` | ConfigMap name for CA certificates | `""` |
 | `ingress.enabled` | Enable ingress | `false` |
 | `gateway.enabled` | Enable Gateway API (HTTPRoute) | `false` |
 
@@ -156,18 +159,53 @@ persistence:
 
 ## Logging
 
-This chart automatically redirects Pritunl Zero logs to stdout when using a read-only filesystem. This is accomplished by:
+When using a read-only filesystem, the chart automatically mounts `/var/log` as an emptyDir volume. This allows Pritunl Zero to write log files even with a read-only root filesystem.
 
-1. Mounting `/var/log` as an emptyDir volume (when `readOnlyRootFilesystem: true`)
-2. Using an initContainer to create a symlink from `/var/log/pritunl-zero.log` to `/dev/stdout`
-
-This allows you to view logs using standard Kubernetes commands:
+Logs are written to `/var/log/pritunl-zero.log` and can be accessed by:
 
 ```bash
-kubectl logs -f <pod-name>
+kubectl exec -it <pod-name> -- cat /var/log/pritunl-zero.log
 ```
 
-The initContainer runs as root (required to create the symlink) but only during pod initialization. The main container continues to run as a non-root user.
+## CA Certificates Sidecar
+
+This chart supports an optional sidecar container for updating CA certificates. This is useful when you need to add custom CA certificates or update the certificate store.
+
+**Enable the CA certificates sidecar:**
+
+```yaml
+caCertsSidecar:
+  enabled: true
+  image:
+    repository: alpine
+    tag: "latest"
+  updateInterval: 3600  # Check for updates every hour
+  # Optional: Use a ConfigMap containing CA certificates
+  # configMap: "custom-ca-certs"
+```
+
+**Using a ConfigMap with custom CA certificates:**
+
+1. Create a ConfigMap with your CA certificates:
+
+```bash
+kubectl create configmap custom-ca-certs \
+  --from-file=ca-certificate.crt=/path/to/ca.crt \
+  --namespace=your-namespace
+```
+
+2. Configure the sidecar to use it:
+
+```yaml
+caCertsSidecar:
+  enabled: true
+  configMap: custom-ca-certs
+```
+
+The sidecar will:
+- Mount CA certificates from the ConfigMap (if specified) or use an emptyDir
+- Periodically update the certificate store
+- Share updated certificates with the main container via mounted volumes at `/etc/ssl/certs` and `/etc/ca-certificates`
 
 ## Ingress
 
