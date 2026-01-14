@@ -18,7 +18,8 @@ This chart follows security best practices and is scanned regularly:
 
 - ✅ **Kubesec Scan**: Automated security scanning on every push and PR
 - ✅ **Non-root user**: Containers run as non-root by default
-- ✅ **Read-only filesystem**: Immutable root filesystem with automatic `/tmp` emptyDir mount
+- ✅ **Read-only filesystem**: Immutable root filesystem with automatic `/tmp` and `/var/log` emptyDir mounts
+- ✅ **Log redirection**: Logs automatically redirected to stdout via symlink
 - ✅ **Pod Security Context**: Full security context configuration
 - ✅ **Resource limits**: CPU and memory limits defined
 
@@ -152,6 +153,21 @@ persistence:
 ```
 
 **Note:** If persistence is disabled, the `/etc` mount will not be created and Pritunl Zero may fail to start if it needs to write configuration files.
+
+## Logging
+
+This chart automatically redirects Pritunl Zero logs to stdout when using a read-only filesystem. This is accomplished by:
+
+1. Mounting `/var/log` as an emptyDir volume (when `readOnlyRootFilesystem: true`)
+2. Using an initContainer to create a symlink from `/var/log/pritunl-zero.log` to `/dev/stdout`
+
+This allows you to view logs using standard Kubernetes commands:
+
+```bash
+kubectl logs -f <pod-name>
+```
+
+The initContainer runs as root (required to create the symlink) but only during pod initialization. The main container continues to run as a non-root user.
 
 ## Ingress
 
