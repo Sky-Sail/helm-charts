@@ -1,0 +1,56 @@
+{{- if and .Values.gateway.enabled (or .Values.gateway.gatewayName .Values.gateway.parentRefs) }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "pritunl-zero.fullname" . }}
+  labels:
+    {{- include "pritunl-zero.labels" . | nindent 4 }}
+  {{- with .Values.gateway.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.gateway.parentRefs }}
+  parentRefs:
+    {{- range .Values.gateway.parentRefs }}
+    - name: {{ .name }}
+      {{- if .namespace }}
+      namespace: {{ .namespace }}
+      {{- end }}
+      {{- if .sectionName }}
+      sectionName: {{ .sectionName }}
+      {{- end }}
+    {{- end }}
+  {{- else if .Values.gateway.gatewayName }}
+  parentRefs:
+    - name: {{ .Values.gateway.gatewayName }}
+      {{- if .Values.gateway.gatewayNamespace }}
+      namespace: {{ .Values.gateway.gatewayNamespace }}
+      {{- else }}
+      namespace: {{ .Release.Namespace }}
+      {{- end }}
+  {{- end }}
+  hostnames:
+    {{- if .Values.gateway.domains }}
+    {{- range .Values.gateway.domains }}
+    - {{ . | quote }}
+    {{- end }}
+    {{- else }}
+    {{- range .Values.gateway.hosts }}
+    - {{ .hostname | quote }}
+    {{- end }}
+    {{- end }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      {{- if .Values.gateway.filters }}
+      filters:
+        {{- toYaml .Values.gateway.filters | nindent 8 }}
+      {{- end }}
+      backendRefs:
+        - name: {{ include "pritunl-zero.fullname" . }}
+          port: {{ .Values.service.port }}
+{{- end }}
+

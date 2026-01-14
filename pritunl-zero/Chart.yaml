@@ -1,0 +1,10 @@
+apiVersion: v2
+appVersion: "1.0.3648.46"
+description: A Helm chart for Pritunl Zero - Zero Trust Network Access (ZTNA) solution
+maintainers:
+  - name: Kacper Karczmarzyk
+    email: kacper@karczmarzyk.me
+name: pritunl-zero
+type: application
+version: 0.1.0
+

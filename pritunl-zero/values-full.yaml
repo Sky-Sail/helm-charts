@@ -1,0 +1,150 @@
+# Full values file for testing all resources
+# This configuration tests the chart with:
+# - Ingress enabled
+# - Gateway (HTTPRoute) enabled
+# - All security settings
+# - All optional features enabled
+
+replicaCount: 2
+
+image:
+  repository: docker.io/pritunl/pritunl-zero
+  pullPolicy: IfNotPresent
+  tag: ""
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  fsGroup: 2000
+
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 80
+
+# Required environment variables
+env:
+  # MONGO_URI can be set directly or loaded from a secret (see mongoSecret below)
+  # MONGO_URI: "mongodb://mongo.example.com:27017/pritunl-zero"
+  NODE_ID: "node-1"
+  # Optional: Additional environment variables
+  # LOG_LEVEL: "info"
+
+# MongoDB secret configuration (recommended for production)
+# Uncomment and configure to use an existing Kubernetes secret
+# mongoSecret:
+#   enabled: true
+#   name: pritunl-zero-mongo
+#   key: mongo-uri
+
+# Ingress enabled
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  # Domain list - automatically creates hosts entries
+  domains:
+    - pritunl-zero.example.com
+    - zero.example.com
+  tls:
+    - secretName: pritunl-zero-tls
+      hosts:
+        - pritunl-zero.example.com
+        - zero.example.com
+  # Node Management Ingress
+  nodeManagement:
+    enabled: true
+    className: nginx
+    annotations:
+      kubernetes.io/ingress.class: nginx
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    domains:
+      - manage.pritunl-zero.example.com
+      - admin.pritunl-zero.example.com
+    tls:
+      - secretName: pritunl-zero-node-management-tls
+        hosts:
+          - manage.pritunl-zero.example.com
+          - admin.pritunl-zero.example.com
+
+# Gateway API (HTTPRoute) enabled
+gateway:
+  enabled: true
+  annotations: {}
+  gatewayName: my-gateway
+  gatewayNamespace: default
+  # Domain list - automatically creates hostnames entries
+  domains:
+    - pritunl-zero-gateway.example.com
+    - zero-gateway.example.com
+  # Optional: filters for gateway rules
+  filters:
+    - type: RequestHeaderModifier
+      requestHeaderModifier:
+        set:
+          - name: X-Forwarded-Proto
+            value: https
+  # Node Management HTTPRoute
+  nodeManagement:
+    enabled: true
+    annotations: {}
+    gatewayName: my-gateway
+    gatewayNamespace: default
+    domains:
+      - manage.pritunl-zero-gateway.example.com
+      - admin.pritunl-zero-gateway.example.com
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+volumes: []
+volumeMounts: []
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
