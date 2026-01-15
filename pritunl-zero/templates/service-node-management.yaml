@@ -1,0 +1,30 @@
+{{- if .Values.service.nodeManagement.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pritunl-zero.fullname" . }}-node-management
+  labels:
+    {{- include "pritunl-zero.labels" . | nindent 4 }}
+    app.kubernetes.io/component: node-management
+  {{- with .Values.service.nodeManagement.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.nodeManagement.type }}
+  {{- if .Values.service.nodeManagement.loadBalancerIP }}
+  loadBalancerIP: {{ .Values.service.nodeManagement.loadBalancerIP | quote }}
+  {{- end }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: 443
+      targetPort: https
+      protocol: TCP
+      name: https
+  selector:
+    {{- include "pritunl-zero.selectorLabels" . | nindent 4 }}
+{{- end }}
+

@@ -28,8 +28,22 @@ securityContext:
   runAsUser: 1000
 
 service:
-  type: ClusterIP
+  type: LoadBalancer
   port: 80
+  # External service for main application domains
+  external:
+    enabled: true
+    type: LoadBalancer
+    annotations: {}
+    # Optional: LoadBalancer IP
+    # loadBalancerIP: ""
+  # Node management service (optional)
+  nodeManagement:
+    enabled: false
+    type: LoadBalancer
+    annotations: {}
+    # Optional: LoadBalancer IP
+    # loadBalancerIP: ""
 
 # Pritunl Zero environment variables
 # Required: MongoDB connection URI
@@ -193,26 +207,6 @@ persistence:
     - ReadWriteOnce
   # Size of PVC
   size: 1Gi
-
-# CA Certificates Init Container
-# Init container to initialize and update CA certificates before the main container starts
-caCertsSidecar:
-  enabled: false
-  image:
-    repository: alpine
-    tag: "3.19"
-    pullPolicy: IfNotPresent
-  # Optional: ConfigMap name containing CA certificates
-  # If not specified, uses emptyDir
-  # configMap: ""
-  # Resources for the init container
-  resources:
-    limits:
-      cpu: 50m
-      memory: 32Mi
-    requests:
-      cpu: 10m
-      memory: 16Mi
 
 # Additional volumes on the output StatefulSet definition.
 volumes: []

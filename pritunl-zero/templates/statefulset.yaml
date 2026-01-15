@@ -43,6 +43,9 @@ spec:
             - name: http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
+            - name: https
+              containerPort: 443
+              protocol: TCP
           env:
             {{- if and .Values.mongoSecret.enabled .Values.mongoSecret.name }}
             - name: MONGO_URI
@@ -87,147 +90,14 @@ spec:
             - name: varlog
               mountPath: /var/log
             {{- end }}
-            {{- if .Values.caCertsSidecar.enabled }}
-            - name: etc-ssl-certs
-              mountPath: /etc/ssl/certs
-            - name: etc-ca-certificates
-              mountPath: /etc/ca-certificates
-            {{- end }}
             {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
-      {{- if .Values.caCertsSidecar.enabled }}
-      initContainers:
-        - name: ca-certs-updater
-          image: {{ .Values.caCertsSidecar.image.repository }}:{{ .Values.caCertsSidecar.image.tag }}
-          imagePullPolicy: {{ .Values.caCertsSidecar.image.pullPolicy }}
-          command:
-            - /bin/sh
-            - -c
-            - |
-              # Ensure directories exist (volumes are already mounted at this point)
-              mkdir -p /usr/local/share/ca-certificates /etc/ca-certificates/update.d /etc/ssl/certs 2>/dev/null || true
-              # Try to use update-ca-certificates if available (from ca-certificates package)
-              if command -v update-ca-certificates >/dev/null 2>&1; then
-                echo "Using update-ca-certificates to generate bundle..."
-                if update-ca-certificates 2>&1 && [ -f /etc/ssl/certs/ca-certificates.crt ]; then
-                  echo "Certificate bundle created using update-ca-certificates"
-                else
-                  echo "Warning: update-ca-certificates failed, trying manual method..."
-                  # Fall through to manual method
-                fi
-              fi
-              # Manual method: create bundle directly from certificate files
-              # This works even without the ca-certificates package
-              if [ ! -f /etc/ssl/certs/ca-certificates.crt ]; then
-                echo "Creating certificate bundle manually..."
-                # Try to find certificates in common locations
-                CERT_SOURCES=""
-                if [ -d /usr/share/ca-certificates ]; then
-                  CERT_SOURCES="/usr/share/ca-certificates"
-                fi
-                if [ -d /etc/ssl/certs ] && [ "$(ls -A /etc/ssl/certs/*.crt 2>/dev/null | head -1)" ]; then
-                  CERT_SOURCES="$CERT_SOURCES /etc/ssl/certs"
-                fi
-                if [ -z "$CERT_SOURCES" ]; then
-                  echo "Warning: No certificate sources found in base image"
-                  echo "Trying to install ca-certificates package..."
-                  if apk update 2>&1 && apk add --no-cache ca-certificates 2>&1; then
-                    echo "Package installed successfully, generating bundle..."
-                    update-ca-certificates 2>&1 || true
-                    if [ -d /usr/share/ca-certificates ]; then
-                      CERT_SOURCES="/usr/share/ca-certificates"
-                    fi
-                  fi
-                  # If still no certificates, create an empty bundle (will be populated by custom certs if provided)
-                  if [ -z "$CERT_SOURCES" ]; then
-                    echo "Warning: Cannot install ca-certificates package (network issue?)"
-                    echo "Creating empty certificate bundle (will only contain custom certificates if provided)"
-                    > /etc/ssl/certs/ca-certificates.crt
-                    CERT_SOURCES=""
-                  fi
-                fi
-                # Create bundle from found certificates
-                if [ -n "$CERT_SOURCES" ]; then
-                  echo "Creating bundle from: $CERT_SOURCES"
-                  > /etc/ssl/certs/ca-certificates.crt
-                  for source in $CERT_SOURCES; do
-                    if [ -d "$source" ]; then
-                      find "$source" -name "*.crt" -type f -exec cat {} \; >> /etc/ssl/certs/ca-certificates.crt 2>/dev/null || true
-                    fi
-                  done
-                fi
-              fi
-              # If custom certs exist, add them to the bundle
-              if [ -d "/usr/local/share/ca-certificates" ] && [ "$(ls -A /usr/local/share/ca-certificates 2>/dev/null)" ]; then
-                echo "Found custom certificates, adding to bundle..."
-                find /usr/local/share/ca-certificates -type f \( -name "*.crt" -o -name "*.pem" \) -exec cat {} \; >> /etc/ssl/certs/ca-certificates.crt 2>/dev/null || true
-              fi
-              # Verify certificate bundle exists in the mounted volume
-              if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
-                CERT_COUNT=$(grep -c "BEGIN CERTIFICATE" /etc/ssl/certs/ca-certificates.crt 2>/dev/null || echo "0")
-                if [ "$CERT_COUNT" -gt 0 ]; then
-                  echo "CA certificates initialized successfully (found $CERT_COUNT certificates)"
-                  ls -lh /etc/ssl/certs/ca-certificates.crt 2>/dev/null || true
-                else
-                  # Check if custom certs were added
-                  if [ -d "/usr/local/share/ca-certificates" ] && [ "$(ls -A /usr/local/share/ca-certificates 2>/dev/null)" ]; then
-                    echo "Warning: Certificate bundle is empty but custom certificates were added"
-                    echo "This might indicate an issue with custom certificate format"
-                  else
-                    echo "Warning: Certificate bundle is empty (no system or custom certificates)"
-                    echo "The bundle will be created but may not work for SSL verification"
-                  fi
-                  # Don't exit - allow empty bundle if custom certs are expected
-                fi
-              else
-                echo "Error: ca-certificates.crt not found after initialization"
-                echo "Debug: Listing /etc/ssl/certs/ contents:"
-                ls -la /etc/ssl/certs/ 2>&1 || true
-                exit 1
-              fi
-              # Ensure /etc/ca-certificates structure is complete
-              mkdir -p /etc/ca-certificates/update.d 2>/dev/null || true
-              echo "Init container completed successfully"
-          volumeMounts:
-            - name: ca-certs
-              mountPath: /usr/local/share/ca-certificates
-              readOnly: true
-            - name: etc-ssl-certs
-              mountPath: /etc/ssl/certs
-            - name: etc-ca-certificates
-              mountPath: /etc/ca-certificates
-          {{- with .Values.caCertsSidecar.resources }}
-          resources:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          securityContext:
-            runAsUser: 0
-            runAsNonRoot: false
-            capabilities:
-              add:
-                - CHOWN
-                - FOWNER
-                - DAC_OVERRIDE
-      {{- end }}
       volumes:
         {{- if .Values.securityContext.readOnlyRootFilesystem }}
         - name: tmp
           emptyDir: {}
         - name: varlog
-          emptyDir: {}
-        {{- end }}
-        {{- if .Values.caCertsSidecar.enabled }}
-        - name: ca-certs
-          {{- if .Values.caCertsSidecar.configMap }}
-          configMap:
-            name: {{ .Values.caCertsSidecar.configMap }}
-          {{- else }}
-          emptyDir: {}
-          {{- end }}
-        - name: etc-ssl-certs
-          emptyDir: {}
-        - name: etc-ca-certificates
           emptyDir: {}
         {{- end }}
         {{- with .Values.volumes }}
