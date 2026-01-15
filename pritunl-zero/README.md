@@ -202,14 +202,21 @@ caCertsSidecar:
 ```
 
 The init container will:
-- Install and initialize the CA certificates package
+- Attempt to use system CA certificates from the base image
 - Mount CA certificates from the ConfigMap (if specified) or use an emptyDir
-- Run `update-ca-certificates` to generate the certificate bundle
+- Generate the certificate bundle using `update-ca-certificates` or manual concatenation
 - Share updated certificates with the main container via mounted volumes:
   - `/etc/ssl/certs` - Contains the certificate bundle (`ca-certificates.crt`)
   - `/etc/ca-certificates` - Contains certificate update directory structure
 
 **Note:** The init container runs once before the main container starts. The main container mounts these volumes to access the updated certificates. The certificate bundle is available at `/etc/ssl/certs/ca-certificates.crt` in the main container.
+
+**Network Restrictions:** If your cluster has network restrictions that prevent package installation, the init container will:
+- Try to use certificates from the base image
+- Create an empty bundle if no system certificates are found (you should provide custom certificates via ConfigMap)
+- Not fail if package installation is blocked (allows the pod to start with custom certificates only)
+
+**Recommended:** If you have network restrictions, provide your CA certificates via ConfigMap to ensure SSL verification works correctly.
 
 ## Ingress
 

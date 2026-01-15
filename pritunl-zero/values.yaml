@@ -200,7 +200,7 @@ caCertsSidecar:
   enabled: false
   image:
     repository: alpine
-    tag: "latest"
+    tag: "3.19"
     pullPolicy: IfNotPresent
   # Optional: ConfigMap name containing CA certificates
   # If not specified, uses emptyDir

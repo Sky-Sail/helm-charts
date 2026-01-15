@@ -130,16 +130,21 @@ spec:
                   CERT_SOURCES="$CERT_SOURCES /etc/ssl/certs"
                 fi
                 if [ -z "$CERT_SOURCES" ]; then
-                  echo "Error: No certificate sources found"
-                  echo "Trying to install ca-certificates package as last resort..."
-                  if apk update >/dev/null 2>&1 && apk add --no-cache ca-certificates >/dev/null 2>&1; then
-                    echo "Package installed, trying update-ca-certificates again..."
+                  echo "Warning: No certificate sources found in base image"
+                  echo "Trying to install ca-certificates package..."
+                  if apk update 2>&1 && apk add --no-cache ca-certificates 2>&1; then
+                    echo "Package installed successfully, generating bundle..."
                     update-ca-certificates 2>&1 || true
-                    CERT_SOURCES="/usr/share/ca-certificates"
-                  else
-                    echo "Error: Cannot find certificates and package installation failed"
-                    echo "This might be a network/DNS issue. Please check pod network connectivity."
-                    exit 1
+                    if [ -d /usr/share/ca-certificates ]; then
+                      CERT_SOURCES="/usr/share/ca-certificates"
+                    fi
+                  fi
+                  # If still no certificates, create an empty bundle (will be populated by custom certs if provided)
+                  if [ -z "$CERT_SOURCES" ]; then
+                    echo "Warning: Cannot install ca-certificates package (network issue?)"
+                    echo "Creating empty certificate bundle (will only contain custom certificates if provided)"
+                    > /etc/ssl/certs/ca-certificates.crt
+                    CERT_SOURCES=""
                   fi
                 fi
                 # Create bundle from found certificates
@@ -165,8 +170,15 @@ spec:
                   echo "CA certificates initialized successfully (found $CERT_COUNT certificates)"
                   ls -lh /etc/ssl/certs/ca-certificates.crt 2>/dev/null || true
                 else
-                  echo "Error: Certificate bundle exists but appears empty"
-                  exit 1
+                  # Check if custom certs were added
+                  if [ -d "/usr/local/share/ca-certificates" ] && [ "$(ls -A /usr/local/share/ca-certificates 2>/dev/null)" ]; then
+                    echo "Warning: Certificate bundle is empty but custom certificates were added"
+                    echo "This might indicate an issue with custom certificate format"
+                  else
+                    echo "Warning: Certificate bundle is empty (no system or custom certificates)"
+                    echo "The bundle will be created but may not work for SSL verification"
+                  fi
+                  # Don't exit - allow empty bundle if custom certs are expected
                 fi
               else
                 echo "Error: ca-certificates.crt not found after initialization"
