@@ -1,0 +1,24 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+apiVersion: v2
+appVersion: 1.0.3648.46
+description: A Helm chart for Pritunl Zero - Zero Trust Network Access (ZTNA) solution
+maintainers:
+- - email: kacper@karczmarzyk.me
+  name: Kacper Karczmarzyk
+name: pritunl-zero
+type: application
+version: 0.2.0
+
+...
+files:
+  pritunl-zero-0.2.0.tgz: sha256:62330559adfdcaeed854e47719f0647185068ddbcc9e482964af339b1c7219ac
+
+-----BEGIN PGP SIGNATURE-----
+
+wrsEARYKAG0FgmlpNKYJEJtQz0CO1zFiRRQAAAAAABwAIHNhbHRAbm90YXRpb25z
+Lm9wZW5wZ3Bqcy5vcmfCI/AqiGwlgee3X1sZytwKCyGnhJvhpMi5Tjo2vTRw+BYh
+BPgYgfr0F1E2imq2v5tQz0CO1zFiAABhvwD8D66ntU8cAANoSw2ZXe8QI5H2taSx
+ZMKq58nRk0FSAzMBALTkq1qJzNyKs5gYHWRUIvLpvu7WK8LNGYtDtQ3HeFMM
+-----END PGP SIGNATURE-----
