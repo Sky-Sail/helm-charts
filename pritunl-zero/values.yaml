@@ -7,6 +7,8 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
+replicaCount: 3
+
 serviceAccount:
   create: false
   automount: true
@@ -23,6 +25,11 @@ securityContext:
     drop:
       - ALL
   readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+  sysctls:
+    - name: net.ipv4.ip_unprivileged_port_start
+      value: "0"
 
 service:
   type: LoadBalancer

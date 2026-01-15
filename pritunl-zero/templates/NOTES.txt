@@ -37,3 +37,12 @@ To get the service IP:
    ⚠️  WARNING: NODE_ID is not configured!
    Please set env.NODE_ID
 {{- end }}
+
+3. Get Admin Password:
+   To retrieve the default admin password, exec into any pod and run:
+   
+   kubectl exec -it {{ include "pritunl-zero.fullname" . }}-0 -n {{ .Release.Namespace }} -- pritunl-zero default-password
+   
+   This will display the default admin credentials:
+   - Username: pritunl
+   - Password: <generated-password>

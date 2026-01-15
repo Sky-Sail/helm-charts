@@ -1,0 +1,15 @@
+{{- if or .Values.env.MONGO_URI .Values.env.NODE_ID }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "pritunl-zero.fullname" . }}-config
+  labels:
+    {{- include "pritunl-zero.labels" . | nindent 4 }}
+data:
+  pritunl-zero.json: |
+    {
+      "mongo_uri": {{ if .Values.env.MONGO_URI }}{{ .Values.env.MONGO_URI | quote }}{{ else }}""{{ end }},
+      "node_id": {{ if .Values.env.NODE_ID }}{{ .Values.env.NODE_ID | quote }}{{ else }}""{{ end }}
+    }
+{{- end }}
+
