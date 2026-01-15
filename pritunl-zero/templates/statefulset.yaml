@@ -105,23 +105,52 @@ spec:
             - /bin/sh
             - -c
             - |
-              # Install ca-certificates package
-              apk add --no-cache ca-certificates >/dev/null 2>&1 || {
-                echo "Error: Failed to install ca-certificates package"
-                exit 1
-              }
               # Ensure directories exist (volumes are already mounted at this point)
               mkdir -p /usr/local/share/ca-certificates /etc/ca-certificates/update.d /etc/ssl/certs 2>/dev/null || true
-              # Run update-ca-certificates to generate the bundle in the mounted volume
-              # This will read from /usr/share/ca-certificates/ and write to /etc/ssl/certs/
-              update-ca-certificates 2>&1
-              UPDATE_EXIT=$?
-              # If update-ca-certificates failed, try manual method
-              if [ $UPDATE_EXIT -ne 0 ] || [ ! -f /etc/ssl/certs/ca-certificates.crt ]; then
-                echo "Warning: update-ca-certificates failed or bundle not found, trying manual method..."
-                # Manually create bundle from system certificates
+              # Try to use update-ca-certificates if available (from ca-certificates package)
+              if command -v update-ca-certificates >/dev/null 2>&1; then
+                echo "Using update-ca-certificates to generate bundle..."
+                if update-ca-certificates 2>&1 && [ -f /etc/ssl/certs/ca-certificates.crt ]; then
+                  echo "Certificate bundle created using update-ca-certificates"
+                else
+                  echo "Warning: update-ca-certificates failed, trying manual method..."
+                  # Fall through to manual method
+                fi
+              fi
+              # Manual method: create bundle directly from certificate files
+              # This works even without the ca-certificates package
+              if [ ! -f /etc/ssl/certs/ca-certificates.crt ]; then
+                echo "Creating certificate bundle manually..."
+                # Try to find certificates in common locations
+                CERT_SOURCES=""
                 if [ -d /usr/share/ca-certificates ]; then
-                  find /usr/share/ca-certificates -name "*.crt" -type f -exec cat {} \; > /etc/ssl/certs/ca-certificates.crt 2>/dev/null || true
+                  CERT_SOURCES="/usr/share/ca-certificates"
+                fi
+                if [ -d /etc/ssl/certs ] && [ "$(ls -A /etc/ssl/certs/*.crt 2>/dev/null | head -1)" ]; then
+                  CERT_SOURCES="$CERT_SOURCES /etc/ssl/certs"
+                fi
+                if [ -z "$CERT_SOURCES" ]; then
+                  echo "Error: No certificate sources found"
+                  echo "Trying to install ca-certificates package as last resort..."
+                  if apk update >/dev/null 2>&1 && apk add --no-cache ca-certificates >/dev/null 2>&1; then
+                    echo "Package installed, trying update-ca-certificates again..."
+                    update-ca-certificates 2>&1 || true
+                    CERT_SOURCES="/usr/share/ca-certificates"
+                  else
+                    echo "Error: Cannot find certificates and package installation failed"
+                    echo "This might be a network/DNS issue. Please check pod network connectivity."
+                    exit 1
+                  fi
+                fi
+                # Create bundle from found certificates
+                if [ -n "$CERT_SOURCES" ]; then
+                  echo "Creating bundle from: $CERT_SOURCES"
+                  > /etc/ssl/certs/ca-certificates.crt
+                  for source in $CERT_SOURCES; do
+                    if [ -d "$source" ]; then
+                      find "$source" -name "*.crt" -type f -exec cat {} \; >> /etc/ssl/certs/ca-certificates.crt 2>/dev/null || true
+                    fi
+                  done
                 fi
               fi
               # If custom certs exist, add them to the bundle
