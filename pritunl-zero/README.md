@@ -73,8 +73,10 @@ Pritunl Zero requires two mandatory environment variables:
    - Example: `mongodb://mongo.example.com:27017/pritunl-zero`
 
 2. **`NODE_ID`**: Unique identifier for each node
+   - **Must be a 24-character hexadecimal string** (MongoDB ObjectId format)
    - Must be unique for each instance
-   - Example: `node-1`, `node-2`, etc.
+   - Example: `507f1f77bcf86cd799439011`, `507f191e810c19729de860ea`, etc.
+   - You can generate one using: `openssl rand -hex 12` or `python3 -c "import secrets; print(secrets.token_hex(12))"`
 
 Configure these in `values.yaml`:
 
@@ -83,7 +85,7 @@ Configure these in `values.yaml`:
 ```yaml
 env:
   MONGO_URI: "mongodb://mongo.example.com:27017/pritunl-zero"
-  NODE_ID: "node-1"
+  NODE_ID: "507f1f77bcf86cd799439011"  # Must be 24-character hex string
 ```
 
 **Option 2: Using an existing Kubernetes secret (recommended for production):**
@@ -104,7 +106,7 @@ mongoSecret:
   key: mongo-uri
 
 env:
-  NODE_ID: "node-1"
+  NODE_ID: "507f1f77bcf86cd799439011"  # Must be 24-character hex string
 ```
 
 ### Key Configuration Options
@@ -127,6 +129,68 @@ env:
 | `gateway.enabled` | Enable Gateway API (HTTPRoute) | `false` |
 
 See `values.yaml` for all available configuration options.
+
+## LoadBalancer Services
+
+This chart uses **Layer 4 (L4) LoadBalancer services** by default to expose Pritunl Zero. The chart creates separate LoadBalancer services for different purposes:
+
+### External Service
+
+The external service is enabled by default and provides access to the main Pritunl Zero application:
+
+```yaml
+service:
+  external:
+    enabled: true
+    type: LoadBalancer
+    annotations:
+      networking.gke.io/load-balancer-type: "External"
+      cloud.google.com/l4-rxlb: "enabled"
+```
+
+### Node Management Service
+
+An optional separate LoadBalancer service for node management/admin interface:
+
+```yaml
+service:
+  nodeManagement:
+    enabled: true
+    type: LoadBalancer
+    annotations:
+      networking.gke.io/load-balancer-type: "Internal"
+```
+
+### Important Notes
+
+- **Layer 4 LoadBalancer**: The services operate at L4 (TCP), not L7 (HTTP/HTTPS)
+- **Self-Managed Certificates**: Pritunl Zero manages its own TLS certificates internally. The application handles SSL/TLS termination
+- **Ports**: Both services expose ports 80 (HTTP) and 443 (HTTPS)
+- **Ingress Integration**: You can use standard Kubernetes Ingress to route traffic to the LoadBalancer services. The LoadBalancer IPs can be used as backend targets in your ingress configuration
+
+**Example: Using LoadBalancer with Ingress**
+
+Since Pritunl Zero self-manages certificates, you can configure your ingress to route traffic to the LoadBalancer service:
+
+```yaml
+# Your ingress configuration
+ingress:
+  enabled: true
+  className: nginx
+  rules:
+    - host: pritunl-zero.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: pritunl-zero-external  # LoadBalancer service name
+                port:
+                  number: 443  # Use HTTPS port
+```
+
+The LoadBalancer service handles the TCP connection, and Pritunl Zero manages the TLS certificates and HTTPS termination internally.
 
 ## Logging
 
@@ -392,7 +456,7 @@ mongoSecret:
   key: mongo-uri  # Default: "mongo-uri"
 
 env:
-  NODE_ID: "node-1"
+  NODE_ID: "507f1f77bcf86cd799439011"  # Must be 24-character hex string
 ```
 
 **Note:** The secret must exist in the same namespace where you're deploying the chart. The secret should contain the full MongoDB connection string in the format: `mongodb://[username:password@]host[:port][/database]`
