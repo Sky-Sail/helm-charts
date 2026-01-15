@@ -1,73 +1,39 @@
 1. Get the application URL by running these commands:
-{{- if .Values.gateway.enabled }}
-{{- if .Values.gateway.domains }}
-{{- range $domain := .Values.gateway.domains }}
-  https://{{ $domain }}
-{{- end }}
-{{- else }}
-{{- range $host := .Values.gateway.hosts }}
-  http{{ if $host.tls }}s{{ end }}://{{ $host.hostname }}
-{{- end }}
-{{- end }}
-{{- else if .Values.ingress.enabled }}
-{{- if .Values.ingress.domains }}
-{{- range $domain := .Values.ingress.domains }}
-  https://{{ $domain }}
-{{- end }}
-{{- else }}
-{{- range $host := .Values.ingress.hosts }}
-  https://{{ $host.host }}
-{{- end }}
-{{- end }}
-{{- else if contains "NodePort" .Values.service.type }}
-  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "pritunl-zero.fullname" . }})
-  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
-  echo http://$NODE_IP:$NODE_PORT
-{{- else if contains "LoadBalancer" .Values.service.type }}
-     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
-           You can watch its status by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "pritunl-zero.fullname" . }}'
-  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "pritunl-zero.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
-  echo http://$SERVICE_IP:{{ .Values.service.port }}
-{{- else if contains "ClusterIP" .Values.service.type }}
-  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "pritunl-zero.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
-  export CONTAINER_PORT=$(kubectl get pod --namespace {{ .Release.Namespace }} $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
-  echo "Visit http://127.0.0.1:8080 to use your application"
-  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:$CONTAINER_PORT
-{{- end }}
+{{- if .Values.service.external.enabled }}
+{{- $externalService := printf "%s-external" (include "pritunl-zero.fullname" .) }}
+External LoadBalancer Service: {{ $externalService }}
 
-{{- if or (and .Values.ingress.enabled .Values.ingress.nodeManagement.enabled) (and .Values.gateway.enabled .Values.gateway.nodeManagement.enabled) }}
+To get the external IP:
+  kubectl get svc {{ $externalService }} -n {{ .Release.Namespace }}
 
-3. Node Management URLs:
-{{- if and .Values.gateway.enabled .Values.gateway.nodeManagement.enabled }}
-{{- if .Values.gateway.nodeManagement.domains }}
-{{- range $domain := .Values.gateway.nodeManagement.domains }}
-   https://{{ $domain }}
-{{- end }}
-{{- else }}
-{{- range $host := .Values.gateway.nodeManagement.hosts }}
-   http{{ if $host.tls }}s{{ end }}://{{ $host.hostname }}
-{{- end }}
-{{- end }}
-{{- else if and .Values.ingress.enabled .Values.ingress.nodeManagement.enabled }}
-{{- if .Values.ingress.nodeManagement.domains }}
-{{- range $domain := .Values.ingress.nodeManagement.domains }}
-   https://{{ $domain }}
-{{- end }}
-{{- else }}
-{{- range $host := .Values.ingress.nodeManagement.hosts }}
-   http{{ if $.Values.ingress.nodeManagement.tls }}s{{ end }}://{{ $host.host }}
-{{- end }}
-{{- end }}
-{{- end }}
+{{- if .Values.service.nodeManagement.enabled }}
+{{- $nodeMgmtService := printf "%s-node-management" (include "pritunl-zero.fullname" .) }}
+Node Management LoadBalancer Service: {{ $nodeMgmtService }}
+
+To get the node management IP:
+  kubectl get svc {{ $nodeMgmtService }} -n {{ .Release.Namespace }}
 
 {{- end }}
-2. IMPORTANT: Ensure MongoDB is configured and accessible.
-   {{- if and .Values.mongoSecret.enabled .Values.mongoSecret.name }}
-   MONGO_URI: Loaded from secret "{{ .Values.mongoSecret.name }}" (key: {{ .Values.mongoSecret.key }})
-   {{- else if .Values.env.MONGO_URI }}
-   MONGO_URI: {{ .Values.env.MONGO_URI }}
-   {{- else }}
-   MONGO_URI: NOT SET
-   {{- end }}
-   NODE_ID: {{ if .Values.env.NODE_ID }}{{ .Values.env.NODE_ID }}{{ else }}NOT SET{{ end }}
+{{- else }}
+{{- $serviceName := include "pritunl-zero.fullname" . }}
+Service: {{ $serviceName }}
 
+To get the service IP:
+  kubectl get svc {{ $serviceName }} -n {{ .Release.Namespace }}
+
+{{- end }}
+
+2. MongoDB Configuration:
+{{- if and .Values.mongoSecret.enabled .Values.mongoSecret.name }}
+   Using MongoDB secret: {{ .Values.mongoSecret.name }} (key: {{ .Values.mongoSecret.key }})
+{{- else if .Values.env.MONGO_URI }}
+   MongoDB URI configured via environment variable
+{{- else }}
+   ⚠️  WARNING: MONGO_URI is not configured!
+   Please set env.MONGO_URI or enable mongoSecret
+{{- end }}
+
+{{- if not .Values.env.NODE_ID }}
+   ⚠️  WARNING: NODE_ID is not configured!
+   Please set env.NODE_ID
+{{- end }}

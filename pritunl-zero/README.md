@@ -32,7 +32,6 @@ Check the [Kubesec scan results](https://github.com/Sky-Sail/helm-charts/actions
 - ☸️ Kubernetes 1.19+
 - 🎩 Helm 3.0+
 - 🗄️ MongoDB instance (required for Pritunl Zero)
-- 💾 Storage class for PVC (if persistence is enabled)
 
 ### Install the chart
 
@@ -116,10 +115,6 @@ env:
 | `image.tag` | Container image tag | `""` (uses appVersion) |
 | `service.type` | Kubernetes service type | `ClusterIP` |
 | `service.port` | Service port | `80` |
-| `persistence.enabled` | Enable PVC for /etc config storage | `true` |
-| `persistence.size` | Size of PVC | `1Gi` |
-| `persistence.storageClass` | Storage class for PVC | `""` (default) |
-| `persistence.accessModes` | Access modes for PVC | `["ReadWriteOnce"]` |
 | `env.MONGO_URI` | MongoDB connection URI (if not using secret) | `""` |
 | `env.NODE_ID` | Unique node identifier | `""` (required) |
 | `mongoSecret.enabled` | Use existing secret for MONGO_URI | `false` |
@@ -132,30 +127,6 @@ env:
 | `gateway.enabled` | Enable Gateway API (HTTPRoute) | `false` |
 
 See `values.yaml` for all available configuration options.
-
-## Persistence
-
-This chart uses a **StatefulSet** and creates a PersistentVolumeClaim (PVC) to store Pritunl Zero configuration files at `/etc`. This is required because Pritunl Zero needs to write its configuration file (`/etc/pritunl-zero.json`) and the container runs with a read-only root filesystem for security.
-
-**Default configuration:**
-
-```yaml
-persistence:
-  enabled: true
-  size: 1Gi
-  storageClass: ""  # Uses default storage class
-  accessModes:
-    - ReadWriteOnce
-```
-
-**Disable persistence (not recommended):**
-
-```yaml
-persistence:
-  enabled: false
-```
-
-**Note:** If persistence is disabled, the `/etc` mount will not be created and Pritunl Zero may fail to start if it needs to write configuration files.
 
 ## Logging
 
