@@ -84,8 +84,8 @@ spec:
       volumes:
         {{- if or .Values.env.MONGO_URI .Values.env.NODE_ID }}
         - name: config
-          configMap:
-            name: {{ include "pritunl-zero.fullname" . }}-config
+          secret:
+            secretName: {{ include "pritunl-zero.fullname" . }}-config
         {{- end }}
         {{- if .Values.securityContext.readOnlyRootFilesystem }}
         - name: tmp
