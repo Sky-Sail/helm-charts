@@ -119,14 +119,9 @@ env:
 | `service.port` | Service port | `80` |
 | `env.MONGO_URI` | MongoDB connection URI (if not using secret) | `""` |
 | `env.NODE_ID` | Unique node identifier | `""` (required) |
-| `mongoSecret.enabled` | Use existing secret for MONGO_URI | `false` |
+| `mongoSecret.enabled` | Use existing secret for configuration | `false` |
 | `mongoSecret.name` | Name of the existing secret | `""` |
-| `mongoSecret.key` | Key in secret containing MONGO_URI | `"mongo-uri"` |
-| `caCertsSidecar.enabled` | Enable CA certificates sidecar | `false` |
-| `caCertsSidecar.updateInterval` | Update interval in seconds | `3600` |
-| `caCertsSidecar.configMap` | ConfigMap name for CA certificates | `""` |
-| `ingress.enabled` | Enable ingress | `false` |
-| `gateway.enabled` | Enable Gateway API (HTTPRoute) | `false` |
+| `mongoSecret.key` | Key in secret containing pritunl-zero.json | `"pritunl-zero.json"` |
 
 See `values.yaml` for all available configuration options.
 
@@ -447,19 +442,27 @@ kubectl create secret generic pritunl-zero-mongo \
   --namespace=your-namespace
 ```
 
+**Create the secret with both values:**
+
+```bash
+kubectl create secret generic pritunl-zero-config \
+  --from-literal=pritunl-zero.json='{"mongo_uri":"mongodb://user:password@mongo.example.com:27017/pritunl-zero","node_id":"507f1f77bcf86cd799439011"}'
+```
+
 **Configure the chart to use the secret:**
 
 ```yaml
 mongoSecret:
   enabled: true
-  name: pritunl-zero-mongo
-  key: mongo-uri  # Default: "mongo-uri"
-
-env:
-  NODE_ID: "507f1f77bcf86cd799439011"  # Must be 24-character hex string
+  name: pritunl-zero-config
+  key: pritunl-zero.json  # Default: "pritunl-zero.json"
 ```
 
-**Note:** The secret must exist in the same namespace where you're deploying the chart. The secret should contain the full MongoDB connection string in the format: `mongodb://[username:password@]host[:port][/database]`
+**Note:** 
+- The secret must exist in the same namespace where you're deploying the chart
+- The secret must contain a JSON file with both `mongo_uri` and `node_id` keys
+- When `mongoSecret.enabled` is `true`, the chart will NOT create a secret resource
+- The existing secret will be mounted at `/etc/pritunl-zero.json` in the pod
 
 ## Upgrading
 

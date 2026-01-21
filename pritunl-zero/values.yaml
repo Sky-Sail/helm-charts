@@ -65,18 +65,20 @@ env:
   # DEBUG: "false"
 
 # MongoDB secret configuration
-# Use an existing Kubernetes secret for MongoDB credentials
-# This allows you to store the MONGO_URI securely in a secret instead of in values.yaml
+# Use an existing Kubernetes secret for configuration file
+# This allows you to store both MONGO_URI and NODE_ID securely in a secret instead of in values.yaml
 mongoSecret:
-  # Enable using an existing secret for MONGO_URI
+  # Enable using an existing secret for configuration
   enabled: false
   # Name of the existing secret (must exist in the same namespace)
   name: ""
-  # Key in the secret that contains the MONGO_URI
-  # The secret should contain the full MongoDB connection string:
-  # Format: mongodb://[username:password@]host[:port][/database]
-  # Example: mongodb://user:password@mongo.example.com:27017/pritunl-zero
-  key: "mongo-uri"
+  # Key in the secret that contains the pritunl-zero.json file
+  # The secret should contain a JSON file with both mongo_uri and node_id:
+  # {
+  #   "mongo_uri": "mongodb://user:password@mongo.example.com:27017/pritunl-zero",
+  #   "node_id": "507f1f77bcf86cd799439011"
+  # }
+  key: "pritunl-zero.json"
 
 resources:
   # We usually recommend not to specify default resources and to leave this as a conscious
